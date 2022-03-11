@@ -217,7 +217,7 @@ Resources:
   AcmeOpsNatGateway3: 
       Type: AWS::EC2::NatGateway
       Properties:
-            AllocationId: !GetAtt AcmeOpsNatGateway2EIP.AllocationId
+            AllocationId: !GetAtt AcmeOpsNatGateway3EIP.AllocationId
             SubnetId: !Ref AcmeOpsPublicSubnet3
             Tags:
             - Key: Name
@@ -404,60 +404,19 @@ Resources:
         KeyName: acme_ops_ssh_key
   
 
-# # Load Balancer 
-
-#   AcmeOpsAppLB:
-#     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-#     Properties:
-#       Name: !Sub ${EnvironmentName}-LoadBalancer
-#       Subnets:
-#         - !Ref AcmeOpsPublicSubnet1
-#         - !Ref AcmeOpsPublicSubnet2
-#       SecurityGroups: 
-#         - !GetAtt AcmeOpsLBSecGroup.GroupId
-#       Tags:
-#         - Key: Name
-#           Value: !Sub ${EnvironmentName}-LoadBalancer
-#         - Key: EnvironmentType
-#           Value: !Ref EnvironmentType
-
-#   AcmeOpsALBListener:
-#     Type: AWS::ElasticLoadBalancingV2::Listener
-#     Properties:
-#       DefaultActions:
-#       - Type: forward
-#         TargetGroupArn: !Ref AcmeOpsWebServerTargetGroup
-#       LoadBalancerArn: !Ref AcmeOpsAppLB
-#       Port: 80
-#       Protocol: HTTP
-
-#   AcmeOpsALBListenerRule:
-#       Type: AWS::ElasticLoadBalancingV2::ListenerRule
-#       Properties:
-#         Actions:
-#         - Type: forward
-#           TargetGroupArn: !Ref 'AcmeOpsWebServerTargetGroup'
-#         Conditions:
-#         - Field: path-pattern
-#           Values: [/]
-#         ListenerArn: !Ref 'AcmeOpsALBListener'
-#         Priority: 1
-
-
 #Autoscaling Group - Creates the required VM Cluster from the LT and binds to a target Group (LB)
 
   BastionAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
-        - !Join [ ",", [ !Ref AcmeOpsPrivateSubnet1, !Ref AcmeOpsPrivateSubnet2, !Ref AcmeOpsPrivateSubnet3 ]]
+        - !Join [ ",", [ !Ref AcmeOpsPublicSubnet1, !Ref AcmeOpsPublicSubnet2, !Ref AcmeOpsPublicSubnet3 ]]
       LaunchTemplate:
         LaunchTemplateId: !Ref BastionLaunchTemplate
         Version: "1"
       MinSize: '3'
       MaxSize: '5'
 
-  
 #   AcmeOpsServerCPUScalingPolicy:
 #     Type: AWS::AutoScaling::ScalingPolicy
 #     Properties:
