@@ -3,7 +3,7 @@
 version: 2.1
 
 workflows:
-  my_workflow:
+  acme_operations_consul:
     jobs:
       - create_infrastructure
 

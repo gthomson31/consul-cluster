@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-    Greg Thomson - Snowplow - Consul Cluster
+    Greg Thomson - AcmeOps - Consul Cluster
     This Cloudformation template routes in traffic via a public facing load balancer to a target group of web servers split accross two avalibility zones 
     that are serving static website traffic imported from S3 as part of the launch Configuration.
 
@@ -13,7 +13,7 @@ Parameters:
     EnvironmentName:
         Description: An Environment name that will be prefixed to resources
         Type: String
-        Default: "Snowplow"
+        Default: "AcmeOps"
 
     EnvironmentType:
         Description: Classify the infrastructure as either development or production
@@ -62,16 +62,11 @@ Parameters:
         Type: String
         Default: "10.0.6.0/24"
 
-    CPUPolicyTargetValue:
-        Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
-        Type: String
-        Default: "50"
-
 Resources:
 
 #NETWORKING RESOURCES 
   #VPC Initalistation
-  Snowplowvpc:
+  AcmeOpsvpc:
     Type: 'AWS::EC2::VPC'
     Properties:
       CidrBlock: !Ref VpcCIDR
@@ -82,11 +77,11 @@ Resources:
         - Key: EnvironmentType
           Value: !Ref EnvironmentType
 
-#Internet Gateway - Allows Access to S3 / Outbound access for instances
+#Internet Gateway - Allows Access to from the web and Outbound access for instances
 
-  SnowplowInternetGateway:
+  AcmeOpsInternetGateway:
     Type: AWS::EC2::InternetGateway
-    DependsOn: Snowplowvpc
+    DependsOn: AcmeOpsvpc
     Properties:
       Tags:
         - Key: Name
@@ -94,16 +89,15 @@ Resources:
         - Key: EnvironmentType
           Value: !Ref EnvironmentType
           
-  SnowplowInternetGatewayAttachment:
+  AcmeOpsInternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-        InternetGatewayId: !Ref SnowplowInternetGateway
-        VpcId: !Ref Snowplowvpc
+        InternetGatewayId: !Ref AcmeOpsInternetGateway
+        VpcId: !Ref AcmeOpsvpc
 
+#Subnets ( 3 Public to each to host a bastion / 3 Private for Consul Servers  )
 
-#Subnets ( 3 Public / 3 Private for Instances )
-
-  SnowplowPublicSubnet1:
+  AcmeOpsPublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties: 
       AvailabilityZone: !Select [ 0, !GetAZs '' ]
@@ -114,9 +108,9 @@ Resources:
           Value: !Sub ${EnvironmentName}_PublicSubnet1_(AZ1)
         - Key: EnvironmentType
           Value: !Ref EnvironmentType
-      VpcId: !Ref Snowplowvpc
+      VpcId: !Ref AcmeOpsvpc
 
-  SnowplowPublicSubnet2:
+  AcmeOpsPublicSubnet2:
     Type: AWS::EC2::Subnet
     Properties: 
       AvailabilityZone: !Select [ 1, !GetAZs '' ]
@@ -127,10 +121,10 @@ Resources:
           Value: !Sub ${EnvironmentName}_PublicSubnet2_(AZ2)
         - Key: EnvironmentType
           Value: !Ref EnvironmentType
-      VpcId: !Ref Snowplowvpc
+      VpcId: !Ref AcmeOpsvpc
 
 
-  SnowplowPublicSubnet3:
+  AcmeOpsPublicSubnet3:
     Type: AWS::EC2::Subnet
     Properties: 
       AvailabilityZone: !Select [ 2, !GetAZs '' ]
@@ -141,9 +135,9 @@ Resources:
           Value: !Sub ${EnvironmentName}_PublicSubnet3_(AZ3)
         - Key: EnvironmentType
           Value: !Ref EnvironmentType
-      VpcId: !Ref Snowplowvpc
+      VpcId: !Ref AcmeOpsvpc
 
-  SnowplowPrivateSubnet1:
+  AcmeOpsPrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties: 
       AvailabilityZone: !Select [ 0, !GetAZs '' ]
@@ -153,9 +147,9 @@ Resources:
           Value: !Sub ${EnvironmentName}_PrivateSubnet1_(AZ1)
         - Key: EnvironmentType
           Value: !Ref EnvironmentType
-      VpcId: !Ref Snowplowvpc
+      VpcId: !Ref AcmeOpsvpc
 
-  SnowplowPrivateSubnet2:
+  AcmeOpsPrivateSubnet2:
     Type: AWS::EC2::Subnet
     Properties: 
       AvailabilityZone: !Select [ 1, !GetAZs '' ]
@@ -165,9 +159,9 @@ Resources:
           Value: !Sub ${EnvironmentName}_PrivateSubnet2_(AZ2)
         - Key: EnvironmentType
           Value: !Ref EnvironmentType
-      VpcId: !Ref Snowplowvpc
+      VpcId: !Ref AcmeOpsvpc
 
-  SnowplowPrivateSubnet3:
+  AcmeOpsPrivateSubnet3:
     Type: AWS::EC2::Subnet
     Properties: 
       AvailabilityZone: !Select [ 2, !GetAZs '' ]
@@ -177,54 +171,54 @@ Resources:
           Value: !Sub ${EnvironmentName}_PrivateSubnet3_(AZ3)
         - Key: EnvironmentType
           Value: !Ref EnvironmentType
-      VpcId: !Ref Snowplowvpc
+      VpcId: !Ref AcmeOpsvpc
 
 
 #NAT Gateway setup for Outbound web traffic
   # Create the Static IP to be used for the NAT Gateways
 
-  SnowplowNatGateway1EIP:
+  AcmeOpsNatGateway1EIP:
       Type: AWS::EC2::EIP
-      DependsOn: SnowplowInternetGatewayAttachment
+      DependsOn: AcmeOpsInternetGatewayAttachment
       Properties: 
           Domain: vpc
 
-  SnowplowNatGateway2EIP:
+  AcmeOpsNatGateway2EIP:
       Type: AWS::EC2::EIP
-      DependsOn: SnowplowInternetGatewayAttachment
+      DependsOn: AcmeOpsInternetGatewayAttachment
       Properties: 
           Domain: vpc
 
-  SnowplowNatGateway3EIP:
+  AcmeOpsNatGateway3EIP:
       Type: AWS::EC2::EIP
-      DependsOn: SnowplowInternetGatewayAttachment
+      DependsOn: AcmeOpsInternetGatewayAttachment
       Properties: 
           Domain: vpc
 
   # Create and attach the ELastic IPs to the NAT GW
-  SnowplowNatGateway1: 
+  AcmeOpsNatGateway1: 
       Type: AWS::EC2::NatGateway
       Properties:
-            AllocationId: !GetAtt SnowplowNatGateway1EIP.AllocationId
-            SubnetId: !Ref SnowplowPublicSubnet1
+            AllocationId: !GetAtt AcmeOpsNatGateway1EIP.AllocationId
+            SubnetId: !Ref AcmeOpsPublicSubnet1
             Tags:
             - Key: Name
               Value: !Sub ${EnvironmentName}-natgw-az1
 
-  SnowplowNatGateway2: 
+  AcmeOpsNatGateway2: 
       Type: AWS::EC2::NatGateway
       Properties:
-            AllocationId: !GetAtt SnowplowNatGateway2EIP.AllocationId
-            SubnetId: !Ref SnowplowPublicSubnet2
+            AllocationId: !GetAtt AcmeOpsNatGateway2EIP.AllocationId
+            SubnetId: !Ref AcmeOpsPublicSubnet2
             Tags:
             - Key: Name
               Value: !Sub ${EnvironmentName}-natgw-az2
 
-  SnowplowNatGateway3: 
+  AcmeOpsNatGateway3: 
       Type: AWS::EC2::NatGateway
       Properties:
-            AllocationId: !GetAtt SnowplowNatGateway2EIP.AllocationId
-            SubnetId: !Ref SnowplowPublicSubnet3
+            AllocationId: !GetAtt AcmeOpsNatGateway2EIP.AllocationId
+            SubnetId: !Ref AcmeOpsPublicSubnet3
             Tags:
             - Key: Name
               Value: !Sub ${EnvironmentName}-natgw-az3
@@ -232,7 +226,7 @@ Resources:
 # Route Tables 
   #Public Routing Table 
 
-  SnowplowPublicSubnetRouteTable:
+  AcmeOpsPublicSubnetRouteTable:
       Type: AWS::EC2::RouteTable
       Properties: 
             Tags: 
@@ -240,42 +234,42 @@ Resources:
                 Value: !Sub ${EnvironmentName}_public_routetable
               - Key: EnvironmentType
                 Value: !Ref EnvironmentType             
-            VpcId: !Ref Snowplowvpc
+            VpcId: !Ref AcmeOpsvpc
   
   PublicSubnetRouteIGW:
     Type: AWS::EC2::Route
     DependsOn:
-      - SnowplowInternetGatewayAttachment
+      - AcmeOpsInternetGatewayAttachment
     Properties:
-        RouteTableId: !Ref SnowplowPublicSubnetRouteTable
+        RouteTableId: !Ref AcmeOpsPublicSubnetRouteTable
         DestinationCidrBlock: 0.0.0.0/0
-        GatewayId: !Ref SnowplowInternetGateway
+        GatewayId: !Ref AcmeOpsInternetGateway
 
   # Associate the public subnets with the route table 
 
   PublicSubnet1RouteTableAssociation:
       Type: AWS::EC2::SubnetRouteTableAssociation
       Properties:
-          RouteTableId: !Ref SnowplowPublicSubnetRouteTable
-          SubnetId: !Ref SnowplowPublicSubnet1
+          RouteTableId: !Ref AcmeOpsPublicSubnetRouteTable
+          SubnetId: !Ref AcmeOpsPublicSubnet1
 
   PublicSubnet2RouteTableAssociation:
       Type: AWS::EC2::SubnetRouteTableAssociation
       Properties:
-          RouteTableId: !Ref SnowplowPublicSubnetRouteTable
-          SubnetId: !Ref SnowplowPublicSubnet2
+          RouteTableId: !Ref AcmeOpsPublicSubnetRouteTable
+          SubnetId: !Ref AcmeOpsPublicSubnet2
 
 
   PublicSubnet3RouteTableAssociation:
       Type: AWS::EC2::SubnetRouteTableAssociation
       Properties:
-          RouteTableId: !Ref SnowplowPublicSubnetRouteTable
-          SubnetId: !Ref SnowplowPublicSubnet3
+          RouteTableId: !Ref AcmeOpsPublicSubnetRouteTable
+          SubnetId: !Ref AcmeOpsPublicSubnet3
 
   #Private Subnet Routing Tables 
   #Private Subnet 1
 
-  SnowplowPrivateSubnet1RouteTable:
+  AcmeOpsPrivateSubnet1RouteTable:
       Type: AWS::EC2::RouteTable
       Properties: 
             Tags: 
@@ -283,25 +277,25 @@ Resources:
                 Value: !Sub ${EnvironmentName}_private_routetable1
               - Key: EnvironmentType
                 Value: !Ref EnvironmentType   
-            VpcId: !Ref Snowplowvpc
+            VpcId: !Ref AcmeOpsvpc
 
-  SnowplowPrivateSubnet1RouteTableAssociation:
+  AcmeOpsPrivateSubnet1RouteTableAssociation:
       Type: AWS::EC2::SubnetRouteTableAssociation
       Properties:
-          RouteTableId: !Ref SnowplowPrivateSubnet1RouteTable
-          SubnetId: !Ref SnowplowPrivateSubnet1
+          RouteTableId: !Ref AcmeOpsPrivateSubnet1RouteTable
+          SubnetId: !Ref AcmeOpsPrivateSubnet1
 
-  SnowplowNatRoutePrivateSubnet1:
+  AcmeOpsNatRoutePrivateSubnet1:
     Type: AWS::EC2::Route
     Properties:
-        RouteTableId: !Ref SnowplowPrivateSubnet1RouteTable
+        RouteTableId: !Ref AcmeOpsPrivateSubnet1RouteTable
         DestinationCidrBlock: 0.0.0.0/0
-        NatGatewayId: !Ref SnowplowNatGateway1    
+        NatGatewayId: !Ref AcmeOpsNatGateway1    
  
  
   # Private Subnet 2 Routing
 
-  SnowplowPrivateSubnet2RouteTable:
+  AcmeOpsPrivateSubnet2RouteTable:
     Type: AWS::EC2::RouteTable
     Properties: 
           Tags: 
@@ -309,25 +303,25 @@ Resources:
                 Value: !Sub ${EnvironmentName}_private_routetable2
               - Key: EnvironmentType
                 Value: !Ref EnvironmentType                  
-          VpcId: !Ref Snowplowvpc 
+          VpcId: !Ref AcmeOpsvpc 
 
-  SnowplowPrivateSubnet2RouteTableAssociation:
+  AcmeOpsPrivateSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-        RouteTableId: !Ref SnowplowPrivateSubnet2RouteTable
-        SubnetId: !Ref SnowplowPrivateSubnet2
+        RouteTableId: !Ref AcmeOpsPrivateSubnet2RouteTable
+        SubnetId: !Ref AcmeOpsPrivateSubnet2
 
   RouteTableSubnetprivate2:
     Type: AWS::EC2::Route
     Properties:
-        RouteTableId: !Ref SnowplowPrivateSubnet2RouteTable
+        RouteTableId: !Ref AcmeOpsPrivateSubnet2RouteTable
         DestinationCidrBlock: 0.0.0.0/0
-        NatGatewayId: !Ref SnowplowNatGateway2      
+        NatGatewayId: !Ref AcmeOpsNatGateway2      
 
  
   # Private Subnet 3 Routing
 
-  SnowplowPrivateSubnet3RouteTable:
+  AcmeOpsPrivateSubnet3RouteTable:
     Type: AWS::EC2::RouteTable
     Properties: 
           Tags: 
@@ -335,29 +329,29 @@ Resources:
                 Value: !Sub ${EnvironmentName}_private_routetable3
               - Key: EnvironmentType
                 Value: !Ref EnvironmentType                  
-          VpcId: !Ref Snowplowvpc 
+          VpcId: !Ref AcmeOpsvpc 
 
-  SnowplowPrivateSubnet3RouteTableAssociation:
+  AcmeOpsPrivateSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-        RouteTableId: !Ref SnowplowPrivateSubnet3RouteTable
-        SubnetId: !Ref SnowplowPrivateSubnet3
+        RouteTableId: !Ref AcmeOpsPrivateSubnet3RouteTable
+        SubnetId: !Ref AcmeOpsPrivateSubnet3
 
   RouteTableSubnetprivate3:
     Type: AWS::EC2::Route
     Properties:
-        RouteTableId: !Ref SnowplowPrivateSubnet3RouteTable
+        RouteTableId: !Ref AcmeOpsPrivateSubnet3RouteTable
         DestinationCidrBlock: 0.0.0.0/0
-        NatGatewayId: !Ref SnowplowNatGateway3     
+        NatGatewayId: !Ref AcmeOpsNatGateway3     
 
 
-# # Security Groups 
+#  Security Groups 
 
-  SnowplowBastionSecGroup:
+  AcmeOpsBastionSecGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow SSH into the Bastion VMS
-      VpcId: !Ref Snowplowvpc
+      VpcId: !Ref AcmeOpsvpc
       SecurityGroupIngress:
       - IpProtocol: tcp
         FromPort: 22
@@ -369,100 +363,109 @@ Resources:
         ToPort: 65535
         CidrIp: 0.0.0.0/0     
 
-#   SnowplowServerS3Profile:
-#     Type: AWS::IAM::InstanceProfile
-#     Properties: 
-#       Roles:
-#         - ec2-to-s3-RO   
+  ConsulSecGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Enables SSH access.
+      VpcId: !Ref AcmeOpsvpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref AcmeOpsBastionSecGroup
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: !Ref VpcCIDR
    
+
+
 # Launch Template
 
-  # SnowplowConsulLaunchTemplate:
-  #   Type: AWS::EC2::LaunchTemplate
-  #   Properties:
-  #     LaunchTemplateData:
-  #       IamInstanceProfile:
-  #         Arn: !GetAtt
-  #           - Arn
-  #       UserData:
-  #         Fn::Base64: 
-  #           !Sub |
-  #           #!/bin/bash
-  #           apt-get update -y
-  #           apt-get install unzip awscli -y
-  #           apt-get install apache2 -y
-  #           systemctl start apache2.service
-  #           cd /var/www/html
-  #           aws s3 cp s3://udacity-demo-1/udacity.zip .
-  #           unzip -o udacity.zip
-  #       ImageId: ami-06fd78dc2f0b69910
-  #       SecurityGroupIds:
-  #         -  !GetAtt SnowplowWebServersSecGroup.GroupId
-  #       InstanceType: t3.medium
-  #       BlockDeviceMappings:
-  #       - DeviceName: "/dev/sdk"
-  #         Ebs:
-  #           VolumeSize: 10
+  AcmeOpsBastionLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt
+            - Arn
+        UserData:
+          Fn::Base64: 
+            !Sub |
+            #!/bin/bash
+            apt-get update -y
+            apt-get install unzip awscli -y
+            apt-get install apache2 -y
+            systemctl start apache2.service
+            cd /var/www/html
+        ImageId: ami-06fd78dc2f0b69910
+        SecurityGroupIds:
+          -  !GetAtt AcmeOpsBastionSecGroup.GroupId
+        InstanceType: t3.micro
+        BlockDeviceMappings:
+        - DeviceName: "/dev/sdk"
+          Ebs:
+            VolumeSize: 10
 
 # # Load Balancer 
 
-#   SnowplowAppLB:
+#   AcmeOpsAppLB:
 #     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
 #     Properties:
 #       Name: !Sub ${EnvironmentName}-LoadBalancer
 #       Subnets:
-#         - !Ref SnowplowPublicSubnet1
-#         - !Ref SnowplowPublicSubnet2
+#         - !Ref AcmeOpsPublicSubnet1
+#         - !Ref AcmeOpsPublicSubnet2
 #       SecurityGroups: 
-#         - !GetAtt SnowplowLBSecGroup.GroupId
+#         - !GetAtt AcmeOpsLBSecGroup.GroupId
 #       Tags:
 #         - Key: Name
 #           Value: !Sub ${EnvironmentName}-LoadBalancer
 #         - Key: EnvironmentType
 #           Value: !Ref EnvironmentType
 
-#   SnowplowALBListener:
+#   AcmeOpsALBListener:
 #     Type: AWS::ElasticLoadBalancingV2::Listener
 #     Properties:
 #       DefaultActions:
 #       - Type: forward
-#         TargetGroupArn: !Ref SnowplowWebServerTargetGroup
-#       LoadBalancerArn: !Ref SnowplowAppLB
+#         TargetGroupArn: !Ref AcmeOpsWebServerTargetGroup
+#       LoadBalancerArn: !Ref AcmeOpsAppLB
 #       Port: 80
 #       Protocol: HTTP
 
-#   SnowplowALBListenerRule:
+#   AcmeOpsALBListenerRule:
 #       Type: AWS::ElasticLoadBalancingV2::ListenerRule
 #       Properties:
 #         Actions:
 #         - Type: forward
-#           TargetGroupArn: !Ref 'SnowplowWebServerTargetGroup'
+#           TargetGroupArn: !Ref 'AcmeOpsWebServerTargetGroup'
 #         Conditions:
 #         - Field: path-pattern
 #           Values: [/]
-#         ListenerArn: !Ref 'SnowplowALBListener'
+#         ListenerArn: !Ref 'AcmeOpsALBListener'
 #         Priority: 1
 
 
 # #Autoscaling Group - Creates the required VM Cluster from the LT and binds to a target Group (LB)
 
-#   SnowplowAutoScalingGroup:
+#   AcmeOpsAutoScalingGroup:
 #     Type: AWS::AutoScaling::AutoScalingGroup
 #     Properties:
 #       VPCZoneIdentifier:
-#         - !Join [ ",", [ !Ref SnowplowPrivateSubnet1, !Ref SnowplowPrivateSubnet2 ]]
+#         - !Join [ ",", [ !Ref AcmeOpsPrivateSubnet1, !Ref AcmeOpsPrivateSubnet2 ]]
 #       LaunchTemplate:
-#         LaunchTemplateId: !Ref SnowplowWebAppLaunchTemplate
+#         LaunchTemplateId: !Ref AcmeOpsWebAppLaunchTemplate
 #         Version: "1"
 #       MinSize: '3'
 #       MaxSize: '5'
 #       TargetGroupARNs:
-#       - Ref: SnowplowWebServerTargetGroup
+#       - Ref: AcmeOpsWebServerTargetGroup
   
-#   SnowplowServerCPUScalingPolicy:
+#   AcmeOpsServerCPUScalingPolicy:
 #     Type: AWS::AutoScaling::ScalingPolicy
 #     Properties:
-#       AutoScalingGroupName: !Ref SnowplowAutoScalingGroup
+#       AutoScalingGroupName: !Ref AcmeOpsAutoScalingGroup
 #       PolicyType: TargetTrackingScaling
 #       TargetTrackingConfiguration:
 #         PredefinedMetricSpecification:
@@ -472,7 +475,7 @@ Resources:
 
 # # Target Group 
 
-#   SnowplowWebServerTargetGroup:
+#   AcmeOpsWebServerTargetGroup:
 #     Type: AWS::ElasticLoadBalancingV2::TargetGroup
 #     Properties:
 #       HealthCheckIntervalSeconds: 90
@@ -483,7 +486,7 @@ Resources:
 #       Port: 80
 #       Protocol: HTTP
 #       UnhealthyThresholdCount: 5
-#       VpcId: !Ref Snowplowvpc
+#       VpcId: !Ref AcmeOpsvpc
 #       Tags:
 #         - Key: Name
 #           Value: !Sub ${EnvironmentName}-TargetGroup
@@ -498,49 +501,49 @@ Resources:
 Outputs:
     VPC: 
       Description: A reference to the created VPC
-      Value: !Ref Snowplowvpc
+      Value: !Ref AcmeOpsvpc
       Export:
         Name: !Sub ${EnvironmentName}-VPCID
    
     NatGatway1:
       Description: The created NatGateway for Private Subnet 1
-      Value: !Ref SnowplowNatGateway1
+      Value: !Ref AcmeOpsNatGateway1
       Export:
         Name: !Sub ${EnvironmentName}-NatGateway1
 
     NatGatway2:
       Description: The created NatGateway for Private Subnet 2
-      Value: !Ref SnowplowNatGateway2
+      Value: !Ref AcmeOpsNatGateway2
       Export:
         Name: !Sub ${EnvironmentName}-NatGateway2
 
     NatGatway3:
       Description: The created NatGateway for Private Subnet 3
-      Value: !Ref SnowplowNatGateway3
+      Value: !Ref AcmeOpsNatGateway3
       Export:
         Name: !Sub ${EnvironmentName}-NatGateway3
 
     # LoadBalancer:
     #   Description: ARN on the application Load Balancer
-    #   Value: !Ref SnowplowAppLB
+    #   Value: !Ref AcmeOpsAppLB
     #   Export:
     #     Name: !Sub ${EnvironmentName}-ALB
 
     # LoadBalancerDNSName:
     #   Description: DNS Namr on the application Load Balancer
-    #   Value: !Join ["",["http://", !GetAtt SnowplowAppLB.DNSName]]
+    #   Value: !Join ["",["http://", !GetAtt AcmeOpsAppLB.DNSName]]
     #   Export:
     #     Name: !Sub ${EnvironmentName}-ALB-DNS
 
     # LBSecGroup :
     #   Description: LB security Group ID
-    #   Value: !Ref SnowplowLBSecGroup
+    #   Value: !Ref AcmeOpsLBSecGroup
     #   Export:
     #     Name: !Sub ${EnvironmentName}-lb-sec-group-id      
 
     # WebSecGroup :
     #   Description: Web Servers security Group ID
-    #   Value: !Ref SnowplowWebServersSecGroup
+    #   Value: !Ref AcmeOpsWebServersSecGroup
     #   Export:
     #     Name: !Sub ${EnvironmentName}-web-sec-group-id
         
