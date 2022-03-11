@@ -456,8 +456,7 @@ Resources:
         Version: "1"
       MinSize: '3'
       MaxSize: '5'
-      TargetGroupARNs:
-      - Ref: AcmeOpsBastionServerTargetGroup
+
   
 #   AcmeOpsServerCPUScalingPolicy:
 #     Type: AWS::AutoScaling::ScalingPolicy
