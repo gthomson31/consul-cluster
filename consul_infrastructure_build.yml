@@ -209,7 +209,7 @@ Resources:
             SubnetId: !Ref SnowplowPublicSubnet1
             Tags:
             - Key: Name
-              Value: ${EnvironmentName}-natgw-az1
+              Value: !Sub ${EnvironmentName}-natgw-az1
 
   SnowplowNatGateway2: 
       Type: AWS::EC2::NatGateway
@@ -218,7 +218,7 @@ Resources:
             SubnetId: !Ref SnowplowPublicSubnet2
             Tags:
             - Key: Name
-              Value: ${EnvironmentName}-natgw-az2
+              Value: !Sub ${EnvironmentName}-natgw-az2
 
   SnowplowNatGateway3: 
       Type: AWS::EC2::NatGateway
@@ -227,7 +227,7 @@ Resources:
             SubnetId: !Ref SnowplowPublicSubnet3
             Tags:
             - Key: Name
-              Value: ${EnvironmentName}-natgw-az3
+              Value: !Sub ${EnvironmentName}-natgw-az3
 
 # Route Tables 
   #Public Routing Table 
@@ -351,39 +351,23 @@ Resources:
         NatGatewayId: !Ref SnowplowNatGateway3     
 
 
-# # Security Groups + IAM Role 
+# # Security Groups 
 
-#   SnowplowLBSecGroup:
-#     Type: AWS::EC2::SecurityGroup
-#     Properties:
-#       GroupDescription: Allow http traffic to the load balancer
-#       VpcId: !Ref Snowplowvpc
-#       SecurityGroupIngress:
-#       - IpProtocol: tcp
-#         FromPort: 80
-#         ToPort: 80
-#         CidrIp: 0.0.0.0/0
-#       SecurityGroupEgress:
-#       - IpProtocol: tcp
-#         FromPort: 80
-#         ToPort: 80
-#         CidrIp: 0.0.0.0/0
-
-#   SnowplowWebServersSecGroup:
-#     Type: AWS::EC2::SecurityGroup
-#     Properties:
-#       GroupDescription: Allow http to our hosts and SSH from local only
-#       VpcId: !Ref Snowplowvpc
-#       SecurityGroupIngress:
-#       - IpProtocol: tcp
-#         FromPort: 80
-#         ToPort: 80
-#         CidrIp: 0.0.0.0/0
-#       SecurityGroupEgress:
-#       - IpProtocol: tcp
-#         FromPort: 0
-#         ToPort: 65535
-#         CidrIp: 0.0.0.0/0     
+  SnowplowBastionSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH into the Bastion VMS
+      VpcId: !Ref Snowplowvpc
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: 0.0.0.0/0     
 
 #   SnowplowServerS3Profile:
 #     Type: AWS::IAM::InstanceProfile
@@ -391,34 +375,34 @@ Resources:
 #       Roles:
 #         - ec2-to-s3-RO   
    
-# # Launch Template
-#   SnowplowWebAppLaunchTemplate:
-#     Type: AWS::EC2::LaunchTemplate
-#     Properties:
-#       LaunchTemplateData:
-#         IamInstanceProfile:
-#           Arn: !GetAtt
-#             - SnowplowServerS3Profile
-#             - Arn
-#         UserData:
-#           Fn::Base64: 
-#             !Sub |
-#             #!/bin/bash
-#             apt-get update -y
-#             apt-get install unzip awscli -y
-#             apt-get install apache2 -y
-#             systemctl start apache2.service
-#             cd /var/www/html
-#             aws s3 cp s3://udacity-demo-1/udacity.zip .
-#             unzip -o udacity.zip
-#         ImageId: ami-06fd78dc2f0b69910
-#         SecurityGroupIds:
-#           -  !GetAtt SnowplowWebServersSecGroup.GroupId
-#         InstanceType: t2.medium
-#         BlockDeviceMappings:
-#         - DeviceName: "/dev/sdk"
-#           Ebs:
-#             VolumeSize: 10
+# Launch Template
+
+  # SnowplowConsulLaunchTemplate:
+  #   Type: AWS::EC2::LaunchTemplate
+  #   Properties:
+  #     LaunchTemplateData:
+  #       IamInstanceProfile:
+  #         Arn: !GetAtt
+  #           - Arn
+  #       UserData:
+  #         Fn::Base64: 
+  #           !Sub |
+  #           #!/bin/bash
+  #           apt-get update -y
+  #           apt-get install unzip awscli -y
+  #           apt-get install apache2 -y
+  #           systemctl start apache2.service
+  #           cd /var/www/html
+  #           aws s3 cp s3://udacity-demo-1/udacity.zip .
+  #           unzip -o udacity.zip
+  #       ImageId: ami-06fd78dc2f0b69910
+  #       SecurityGroupIds:
+  #         -  !GetAtt SnowplowWebServersSecGroup.GroupId
+  #       InstanceType: t3.medium
+  #       BlockDeviceMappings:
+  #       - DeviceName: "/dev/sdk"
+  #         Ebs:
+  #           VolumeSize: 10
 
 # # Load Balancer 
 
