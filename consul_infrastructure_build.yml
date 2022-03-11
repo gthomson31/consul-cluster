@@ -393,7 +393,7 @@ Resources:
             apt-get update -y
             apt-get install unzip awscli -y
 
-        ImageId: ami-0bae84b2c3e29b07b
+        ImageId: ami-0db188056a6ff81ae
         SecurityGroupIds:
           -  !GetAtt AcmeOpsBastionSecGroup.GroupId
         InstanceType: t3.micro
