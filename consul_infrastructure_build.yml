@@ -259,7 +259,6 @@ Resources:
           RouteTableId: !Ref AcmeOpsPublicSubnetRouteTable
           SubnetId: !Ref AcmeOpsPublicSubnet2
 
-
   PublicSubnet3RouteTableAssociation:
       Type: AWS::EC2::SubnetRouteTableAssociation
       Properties:
@@ -416,6 +415,10 @@ Resources:
         Version: "1"
       MinSize: '3'
       MaxSize: '5'
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-Bastion
+      
 
 #   AcmeOpsServerCPUScalingPolicy:
 #     Type: AWS::AutoScaling::ScalingPolicy
