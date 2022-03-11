@@ -382,23 +382,18 @@ Resources:
 
 # Launch Template
 
-  AcmeOpsBastionLaunchTemplate:
+  BastionLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateData:
-        IamInstanceProfile:
-          Arn: !GetAtt
-            - Arn
         UserData:
           Fn::Base64: 
             !Sub |
             #!/bin/bash
             apt-get update -y
             apt-get install unzip awscli -y
-            apt-get install apache2 -y
-            systemctl start apache2.service
-            cd /var/www/html
-        ImageId: ami-06fd78dc2f0b69910
+
+        ImageId: ami-0bae84b2c3e29b07b
         SecurityGroupIds:
           -  !GetAtt AcmeOpsBastionSecGroup.GroupId
         InstanceType: t3.micro
@@ -406,6 +401,8 @@ Resources:
         - DeviceName: "/dev/sdk"
           Ebs:
             VolumeSize: 10
+        KeyName: acme_ops_ssh_key
+  
 
 # # Load Balancer 
 
@@ -447,20 +444,20 @@ Resources:
 #         Priority: 1
 
 
-# #Autoscaling Group - Creates the required VM Cluster from the LT and binds to a target Group (LB)
+#Autoscaling Group - Creates the required VM Cluster from the LT and binds to a target Group (LB)
 
-#   AcmeOpsAutoScalingGroup:
-#     Type: AWS::AutoScaling::AutoScalingGroup
-#     Properties:
-#       VPCZoneIdentifier:
-#         - !Join [ ",", [ !Ref AcmeOpsPrivateSubnet1, !Ref AcmeOpsPrivateSubnet2 ]]
-#       LaunchTemplate:
-#         LaunchTemplateId: !Ref AcmeOpsWebAppLaunchTemplate
-#         Version: "1"
-#       MinSize: '3'
-#       MaxSize: '5'
-#       TargetGroupARNs:
-#       - Ref: AcmeOpsWebServerTargetGroup
+  BastionAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Join [ ",", [ !Ref AcmeOpsPrivateSubnet1, !Ref AcmeOpsPrivateSubnet2, !Ref AcmeOpsPrivateSubnet3 ]]
+      LaunchTemplate:
+        LaunchTemplateId: !Ref BastionLaunchTemplate
+        Version: "1"
+      MinSize: '3'
+      MaxSize: '5'
+      TargetGroupARNs:
+      - Ref: AcmeOpsBastionServerTargetGroup
   
 #   AcmeOpsServerCPUScalingPolicy:
 #     Type: AWS::AutoScaling::ScalingPolicy
