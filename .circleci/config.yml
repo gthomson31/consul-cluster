@@ -18,5 +18,5 @@ jobs:
           command: |
             aws cloudformation deploy \
               --template-file consul_infrastructure_build.yml \
-              --stack-name snowplow_consul_cluster
+              --stack-name snowplow-consul-cluster
               --region=eu-west-1
