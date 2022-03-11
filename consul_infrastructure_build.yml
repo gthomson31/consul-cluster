@@ -207,9 +207,9 @@ Resources:
       Properties:
             AllocationId: !GetAtt SnowplowNatGateway1EIP.AllocationId
             SubnetId: !Ref SnowplowPublicSubnet1
-      Tags:
-      - Key: Name
-        Value: ${EnvironmentName}-natgw-az1
+            Tags:
+            - Key: Name
+              Value: ${EnvironmentName}-natgw-az1
 
   SnowplowNatGateway2: 
       Type: AWS::EC2::NatGateway
