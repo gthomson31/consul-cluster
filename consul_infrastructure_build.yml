@@ -1,0 +1,553 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+    Greg Thomson - Snowplow - Consul Cluster
+    This Cloudformation template routes in traffic via a public facing load balancer to a target group of web servers split accross two avalibility zones 
+    that are serving static website traffic imported from S3 as part of the launch Configuration.
+
+    Network configuration is split into 1 private subnet and 1 public subnet per AZ. 
+    Using the Network EU-WEST-1 which containts 3 AZ's
+
+    External Internet access is provided via route to a seperate NAT for each private subnet and directly to the IGW for resources within the public subnet.
+
+Parameters:
+    EnvironmentName:
+        Description: An Environment name that will be prefixed to resources
+        Type: String
+        Default: "Snowplow"
+
+    EnvironmentType:
+        Description: Classify the infrastructure as either development or production
+        Type: String
+        Default: "Development"
+
+    VpcCIDR:
+        AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+        Description: An Environment name that will be prefixed to resources
+        Type: String
+        Default: "10.0.0.0/16"       
+
+    PublicSubnet1CIDR:
+        AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+        Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+        Type: String
+        Default: 10.0.0.0/24
+
+    PublicSubnet2CIDR:
+        AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+        Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+        Type: String
+        Default: 10.0.1.0/24
+
+    PublicSubnet2CIDR:
+        AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+        Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+        Type: String
+        Default: 10.0.3.0/24
+
+    PrivateSubnet1CIDR:
+        AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+        Description: An Environment name that will be prefixed to resources
+        Type: String 
+        Default: "10.0.4.0/24"
+
+    PrivateSubnet2CIDR:
+        AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+        Description: An Environment name that will be prefixed to resources
+        Type: String
+        Default: "10.0.5.0/24"
+  
+    PrivateSubnet2CIDR:
+        AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+        Description: An Environment name that will be prefixed to resources
+        Type: String
+        Default: "10.0.6.0/24"
+
+    CPUPolicyTargetValue:
+        Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+        Type: String
+        Default: "50"
+
+
+Resources:
+
+#VPC Initalistation
+  Snowplowvpc:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsHostnames: True
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-vpc
+        - Key: EnvironmentType
+          Value: !Ref EnvironmentType
+
+#Internet Gateway - Allows Access to S3 / Outbound access for instances
+
+  SnowplowInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    DependsOn: Snowplowvpc
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+        - Key: EnvironmentType
+          Value: !Ref EnvironmentType
+          
+  SnowplowInternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+        InternetGatewayId: !Ref SnowplowInternetGateway
+        VpcId: !Ref Snowplowvpc
+
+
+#Subnets ( 3 Public / 3 Private for Instances )
+
+  SnowplowPublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName}_PublicSubnet1_(AZ1)
+        - Key: EnvironmentType
+          Value: !Ref EnvironmentType
+      VpcId: !Ref Snowplowvpc
+
+  SnowplowPublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName}_PublicSubnet2_(AZ2)
+        - Key: EnvironmentType
+          Value: !Ref EnvironmentType
+      VpcId: !Ref Snowplowvpc
+
+
+  SnowplowPublicSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet3CIDR
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName}_PublicSubnet3_(AZ3)
+        - Key: EnvironmentType
+          Value: !Ref EnvironmentType
+      VpcId: !Ref Snowplowvpc
+
+  SnowplowPrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName}_PrivateSubnet1_(AZ1)
+        - Key: EnvironmentType
+          Value: !Ref EnvironmentType
+      VpcId: !Ref Snowplowvpc
+
+  SnowplowPrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName}_PrivateSubnet2_(AZ2)
+        - Key: EnvironmentType
+          Value: !Ref EnvironmentType
+      VpcId: !Ref Snowplowvpc
+
+  SnowplowPrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet3CIDR
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName}_PrivateSubnet3_(AZ3)
+        - Key: EnvironmentType
+          Value: !Ref EnvironmentType
+      VpcId: !Ref Snowplowvpc
+
+
+#NAT Gateway setup for Outbound web traffic / s3 access from private subnet
+# Create the Static IP to be used for the NAT Gateways
+
+  SnowplowNatGateway1EIP:
+      Type: AWS::EC2::EIP
+      DependsOn: SnowplowInternetGatewayAttachment
+      Properties: 
+          Domain: vpc
+
+  SnowplowNatGateway2EIP:
+      Type: AWS::EC2::EIP
+      DependsOn: SnowplowInternetGatewayAttachment
+      Properties: 
+          Domain: vpc
+
+  SnowplowNatGateway3EIP:
+      Type: AWS::EC2::EIP
+      DependsOn: SnowplowInternetGatewayAttachment
+      Properties: 
+          Domain: vpc
+
+# Create and attach the ELastic IPs to the NAT GW
+  SnowplowNatGateway1: 
+      Type: AWS::EC2::NatGateway
+      Properties:
+            AllocationId: !GetAtt SnowplowNatGateway1EIP.AllocationId
+            SubnetId: !Ref SnowplowPublicSubnet1
+
+  SnowplowNatGateway2: 
+      Type: AWS::EC2::NatGateway
+      Properties:
+            AllocationId: !GetAtt SnowplowNatGateway2EIP.AllocationId
+            SubnetId: !Ref SnowplowPublicSubnet2
+
+  SnowplowNatGateway3: 
+      Type: AWS::EC2::NatGateway
+      Properties:
+            AllocationId: !GetAtt SnowplowNatGateway2EIP.AllocationId
+            SubnetId: !Ref SnowplowPublicSubnet2
+
+# Route Tables 
+#Public Routing Table 
+
+  SnowplowPublicSubnetRouteTable:
+      Type: AWS::EC2::RouteTable
+      Properties: 
+            Tags: 
+              - Key: Name
+                Value: !Sub ${EnvironmentName}_public_routetable
+              - Key: EnvironmentType
+                Value: !Ref EnvironmentType             
+            VpcId: !Ref Snowplowvpc
+  
+  PublicSubnetRouteIGW:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - SnowplowInternetGatewayAttachment
+    Properties:
+        RouteTableId: !Ref SnowplowPublicSubnetRouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        GatewayId: !Ref SnowplowInternetGateway
+
+# Associate the public subnets with the route table 
+
+  PublicSubnet1RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+          RouteTableId: !Ref SnowplowPublicSubnetRouteTable
+          SubnetId: !Ref SnowplowPublicSubnet1
+
+  PublicSubnet2RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+          RouteTableId: !Ref SnowplowPublicSubnetRouteTable
+          SubnetId: !Ref SnowplowPublicSubnet2
+
+
+  PublicSubnet3RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+          RouteTableId: !Ref SnowplowPublicSubnetRouteTable
+          SubnetId: !Ref SnowplowPublicSubnet3
+
+#Private Subnet Routing Tables 
+#Private Subnet 1
+
+  SnowplowPrivateSubnet1RouteTable:
+      Type: AWS::EC2::RouteTable
+      Properties: 
+            Tags: 
+              - Key: Name
+                Value: !Sub ${EnvironmentName}_private_routetable1
+              - Key: EnvironmentType
+                Value: !Ref EnvironmentType   
+            VpcId: !Ref Snowplowvpc
+
+  SnowplowPrivateSubnet1RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+          RouteTableId: !Ref SnowplowPrivateSubnet1RouteTable
+          SubnetId: !Ref SnowplowPrivateSubnet1
+
+  SnowplowNatRoutePrivateSubnet1:
+    Type: AWS::EC2::Route
+    Properties:
+        RouteTableId: !Ref SnowplowPrivateSubnet1RouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        NatGatewayId: !Ref SnowplowNatGateway1    
+ 
+ 
+# #Private Subnet 2 Routing
+
+  SnowplowPrivateSubnet2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+          Tags: 
+              - Key: Name
+                Value: !Sub ${EnvironmentName}_private_routetable2
+              - Key: EnvironmentType
+                Value: !Ref EnvironmentType                  
+          VpcId: !Ref Snowplowvpc 
+
+  SnowplowPrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+        RouteTableId: !Ref SnowplowPrivateSubnet2RouteTable
+        SubnetId: !Ref SnowplowPrivateSubnet2
+
+  RouteTableSubnetprivate2:
+    Type: AWS::EC2::Route
+    Properties:
+        RouteTableId: !Ref SnowplowPrivateSubnet2RouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        NatGatewayId: !Ref SnowplowNatGateway2      
+
+ 
+# #Private Subnet 2 Routing
+
+  SnowplowPrivateSubnet3RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+          Tags: 
+              - Key: Name
+                Value: !Sub ${EnvironmentName}_private_routetable2
+              - Key: EnvironmentType
+                Value: !Ref EnvironmentType                  
+          VpcId: !Ref Snowplowvpc 
+
+  SnowplowPrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+        RouteTableId: !Ref SnowplowPrivateSubnet3RouteTable
+        SubnetId: !Ref SnowplowPrivateSubnet3
+
+  RouteTableSubnetprivate2:
+    Type: AWS::EC2::Route
+    Properties:
+        RouteTableId: !Ref SnowplowPrivateSubnet2RouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        NatGatewayId: !Ref SnowplowNatGateway3     
+
+
+# # Security Groups + IAM Role 
+
+#   SnowplowLBSecGroup:
+#     Type: AWS::EC2::SecurityGroup
+#     Properties:
+#       GroupDescription: Allow http traffic to the load balancer
+#       VpcId: !Ref Snowplowvpc
+#       SecurityGroupIngress:
+#       - IpProtocol: tcp
+#         FromPort: 80
+#         ToPort: 80
+#         CidrIp: 0.0.0.0/0
+#       SecurityGroupEgress:
+#       - IpProtocol: tcp
+#         FromPort: 80
+#         ToPort: 80
+#         CidrIp: 0.0.0.0/0
+
+#   SnowplowWebServersSecGroup:
+#     Type: AWS::EC2::SecurityGroup
+#     Properties:
+#       GroupDescription: Allow http to our hosts and SSH from local only
+#       VpcId: !Ref Snowplowvpc
+#       SecurityGroupIngress:
+#       - IpProtocol: tcp
+#         FromPort: 80
+#         ToPort: 80
+#         CidrIp: 0.0.0.0/0
+#       SecurityGroupEgress:
+#       - IpProtocol: tcp
+#         FromPort: 0
+#         ToPort: 65535
+#         CidrIp: 0.0.0.0/0     
+
+#   SnowplowServerS3Profile:
+#     Type: AWS::IAM::InstanceProfile
+#     Properties: 
+#       Roles:
+#         - ec2-to-s3-RO   
+   
+# # Launch Template
+#   SnowplowWebAppLaunchTemplate:
+#     Type: AWS::EC2::LaunchTemplate
+#     Properties:
+#       LaunchTemplateData:
+#         IamInstanceProfile:
+#           Arn: !GetAtt
+#             - SnowplowServerS3Profile
+#             - Arn
+#         UserData:
+#           Fn::Base64: 
+#             !Sub |
+#             #!/bin/bash
+#             apt-get update -y
+#             apt-get install unzip awscli -y
+#             apt-get install apache2 -y
+#             systemctl start apache2.service
+#             cd /var/www/html
+#             aws s3 cp s3://udacity-demo-1/udacity.zip .
+#             unzip -o udacity.zip
+#         ImageId: ami-06fd78dc2f0b69910
+#         SecurityGroupIds:
+#           -  !GetAtt SnowplowWebServersSecGroup.GroupId
+#         InstanceType: t2.medium
+#         BlockDeviceMappings:
+#         - DeviceName: "/dev/sdk"
+#           Ebs:
+#             VolumeSize: 10
+
+# # Load Balancer 
+
+#   SnowplowAppLB:
+#     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+#     Properties:
+#       Name: !Sub ${EnvironmentName}-LoadBalancer
+#       Subnets:
+#         - !Ref SnowplowPublicSubnet1
+#         - !Ref SnowplowPublicSubnet2
+#       SecurityGroups: 
+#         - !GetAtt SnowplowLBSecGroup.GroupId
+#       Tags:
+#         - Key: Name
+#           Value: !Sub ${EnvironmentName}-LoadBalancer
+#         - Key: EnvironmentType
+#           Value: !Ref EnvironmentType
+
+#   SnowplowALBListener:
+#     Type: AWS::ElasticLoadBalancingV2::Listener
+#     Properties:
+#       DefaultActions:
+#       - Type: forward
+#         TargetGroupArn: !Ref SnowplowWebServerTargetGroup
+#       LoadBalancerArn: !Ref SnowplowAppLB
+#       Port: 80
+#       Protocol: HTTP
+
+#   SnowplowALBListenerRule:
+#       Type: AWS::ElasticLoadBalancingV2::ListenerRule
+#       Properties:
+#         Actions:
+#         - Type: forward
+#           TargetGroupArn: !Ref 'SnowplowWebServerTargetGroup'
+#         Conditions:
+#         - Field: path-pattern
+#           Values: [/]
+#         ListenerArn: !Ref 'SnowplowALBListener'
+#         Priority: 1
+
+
+# #Autoscaling Group - Creates the required VM Cluster from the LT and binds to a target Group (LB)
+
+#   SnowplowAutoScalingGroup:
+#     Type: AWS::AutoScaling::AutoScalingGroup
+#     Properties:
+#       VPCZoneIdentifier:
+#         - !Join [ ",", [ !Ref SnowplowPrivateSubnet1, !Ref SnowplowPrivateSubnet2 ]]
+#       LaunchTemplate:
+#         LaunchTemplateId: !Ref SnowplowWebAppLaunchTemplate
+#         Version: "1"
+#       MinSize: '3'
+#       MaxSize: '5'
+#       TargetGroupARNs:
+#       - Ref: SnowplowWebServerTargetGroup
+  
+#   SnowplowServerCPUScalingPolicy:
+#     Type: AWS::AutoScaling::ScalingPolicy
+#     Properties:
+#       AutoScalingGroupName: !Ref SnowplowAutoScalingGroup
+#       PolicyType: TargetTrackingScaling
+#       TargetTrackingConfiguration:
+#         PredefinedMetricSpecification:
+#           PredefinedMetricType: ASGAverageCPUUtilization
+#         TargetValue: !Ref CPUPolicyTargetValue
+
+
+# # Target Group 
+
+#   SnowplowWebServerTargetGroup:
+#     Type: AWS::ElasticLoadBalancingV2::TargetGroup
+#     Properties:
+#       HealthCheckIntervalSeconds: 90
+#       HealthCheckPath: /
+#       HealthCheckProtocol: HTTP
+#       HealthCheckTimeoutSeconds: 8
+#       HealthyThresholdCount: 2
+#       Port: 80
+#       Protocol: HTTP
+#       UnhealthyThresholdCount: 5
+#       VpcId: !Ref Snowplowvpc
+#       Tags:
+#         - Key: Name
+#           Value: !Sub ${EnvironmentName}-TargetGroup
+#         - Key: EnvironmentType
+#           Value: !Ref EnvironmentType
+#       TargetGroupAttributes:
+#       - Key: slow_start.duration_seconds
+#         Value: "90"
+
+# Output Variables for created Infrastructure 
+
+Outputs:
+    VPC: 
+      Description: A reference to the created VPC
+      Value: !Ref Snowplowvpc
+      Export:
+        Name: !Sub ${EnvironmentName}-VPCID
+   
+    NatGatway1:
+      Description: The created NatGateway for Private Subnet 1
+      Value: !Ref SnowplowNatGateway1
+      Export:
+        Name: !Sub ${EnvironmentName}-NatGateway1
+
+    NatGatway2:
+      Description: The created NatGateway for Private Subnet 2
+      Value: !Ref SnowplowNatGateway2
+      Export:
+        Name: !Sub ${EnvironmentName}-NatGateway2
+
+    NatGatway3:
+      Description: The created NatGateway for Private Subnet 3
+      Value: !Ref SnowplowNatGateway3
+      Export:
+        Name: !Sub ${EnvironmentName}-NatGateway3
+
+    # LoadBalancer:
+    #   Description: ARN on the application Load Balancer
+    #   Value: !Ref SnowplowAppLB
+    #   Export:
+    #     Name: !Sub ${EnvironmentName}-ALB
+
+    # LoadBalancerDNSName:
+    #   Description: DNS Namr on the application Load Balancer
+    #   Value: !Join ["",["http://", !GetAtt SnowplowAppLB.DNSName]]
+    #   Export:
+    #     Name: !Sub ${EnvironmentName}-ALB-DNS
+
+    # LBSecGroup :
+    #   Description: LB security Group ID
+    #   Value: !Ref SnowplowLBSecGroup
+    #   Export:
+    #     Name: !Sub ${EnvironmentName}-lb-sec-group-id      
+
+    # WebSecGroup :
+    #   Description: Web Servers security Group ID
+    #   Value: !Ref SnowplowWebServersSecGroup
+    #   Export:
+    #     Name: !Sub ${EnvironmentName}-web-sec-group-id
+        
