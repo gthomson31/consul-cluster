@@ -67,10 +67,10 @@ Parameters:
         Type: String
         Default: "50"
 
-
 Resources:
 
-#VPC Initalistation
+#NETWORKING RESOURCES 
+  #VPC Initalistation
   Snowplowvpc:
     Type: 'AWS::EC2::VPC'
     Properties:
@@ -180,8 +180,8 @@ Resources:
       VpcId: !Ref Snowplowvpc
 
 
-#NAT Gateway setup for Outbound web traffic / s3 access from private subnet
-# Create the Static IP to be used for the NAT Gateways
+#NAT Gateway setup for Outbound web traffic
+  # Create the Static IP to be used for the NAT Gateways
 
   SnowplowNatGateway1EIP:
       Type: AWS::EC2::EIP
@@ -201,27 +201,36 @@ Resources:
       Properties: 
           Domain: vpc
 
-# Create and attach the ELastic IPs to the NAT GW
+  # Create and attach the ELastic IPs to the NAT GW
   SnowplowNatGateway1: 
       Type: AWS::EC2::NatGateway
       Properties:
             AllocationId: !GetAtt SnowplowNatGateway1EIP.AllocationId
             SubnetId: !Ref SnowplowPublicSubnet1
+      Tags:
+      - Key: Name
+        Value: ${EnvironmentName}-natgw-az1
 
   SnowplowNatGateway2: 
       Type: AWS::EC2::NatGateway
       Properties:
             AllocationId: !GetAtt SnowplowNatGateway2EIP.AllocationId
             SubnetId: !Ref SnowplowPublicSubnet2
+            Tags:
+            - Key: Name
+              Value: ${EnvironmentName}-natgw-az2
 
   SnowplowNatGateway3: 
       Type: AWS::EC2::NatGateway
       Properties:
             AllocationId: !GetAtt SnowplowNatGateway2EIP.AllocationId
-            SubnetId: !Ref SnowplowPublicSubnet2
+            SubnetId: !Ref SnowplowPublicSubnet3
+            Tags:
+            - Key: Name
+              Value: ${EnvironmentName}-natgw-az3
 
 # Route Tables 
-#Public Routing Table 
+  #Public Routing Table 
 
   SnowplowPublicSubnetRouteTable:
       Type: AWS::EC2::RouteTable
@@ -242,7 +251,7 @@ Resources:
         DestinationCidrBlock: 0.0.0.0/0
         GatewayId: !Ref SnowplowInternetGateway
 
-# Associate the public subnets with the route table 
+  # Associate the public subnets with the route table 
 
   PublicSubnet1RouteTableAssociation:
       Type: AWS::EC2::SubnetRouteTableAssociation
@@ -263,8 +272,8 @@ Resources:
           RouteTableId: !Ref SnowplowPublicSubnetRouteTable
           SubnetId: !Ref SnowplowPublicSubnet3
 
-#Private Subnet Routing Tables 
-#Private Subnet 1
+  #Private Subnet Routing Tables 
+  #Private Subnet 1
 
   SnowplowPrivateSubnet1RouteTable:
       Type: AWS::EC2::RouteTable
@@ -290,7 +299,7 @@ Resources:
         NatGatewayId: !Ref SnowplowNatGateway1    
  
  
-# #Private Subnet 2 Routing
+  # Private Subnet 2 Routing
 
   SnowplowPrivateSubnet2RouteTable:
     Type: AWS::EC2::RouteTable
@@ -316,28 +325,28 @@ Resources:
         NatGatewayId: !Ref SnowplowNatGateway2      
 
  
-# #Private Subnet 2 Routing
+  # Private Subnet 3 Routing
 
   SnowplowPrivateSubnet3RouteTable:
     Type: AWS::EC2::RouteTable
     Properties: 
           Tags: 
               - Key: Name
-                Value: !Sub ${EnvironmentName}_private_routetable2
+                Value: !Sub ${EnvironmentName}_private_routetable3
               - Key: EnvironmentType
                 Value: !Ref EnvironmentType                  
           VpcId: !Ref Snowplowvpc 
 
-  SnowplowPrivateSubnet2RouteTableAssociation:
+  SnowplowPrivateSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
         RouteTableId: !Ref SnowplowPrivateSubnet3RouteTable
         SubnetId: !Ref SnowplowPrivateSubnet3
 
-  RouteTableSubnetprivate2:
+  RouteTableSubnetprivate3:
     Type: AWS::EC2::Route
     Properties:
-        RouteTableId: !Ref SnowplowPrivateSubnet2RouteTable
+        RouteTableId: !Ref SnowplowPrivateSubnet3RouteTable
         DestinationCidrBlock: 0.0.0.0/0
         NatGatewayId: !Ref SnowplowNatGateway3     
 
