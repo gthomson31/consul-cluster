@@ -402,8 +402,32 @@ Resources:
             VolumeSize: 10
         KeyName: acme_ops_ssh_key
   
+  ConsulLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        UserData:
+          Fn::Base64: 
+            !Sub |
+            runcmd:
+            - apt-get update -y
+            - sudo yum install -y yum-utils
+            - sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+            - sudo yum -y install consul
+            - consul -v
 
-#Autoscaling Group - Creates the required VM Cluster from the LT and binds to a target Group (LB)
+        ImageId: ami-0db188056a6ff81ae
+        SecurityGroupIds:
+          -  !GetAtt ConsulSecGroup.GroupId
+        InstanceType: t3.micro
+        BlockDeviceMappings:
+        - DeviceName: "/dev/sdk"
+          Ebs:
+            VolumeSize: 10
+        KeyName: consul-cluster-ssh	
+
+
+#Autoscaling Group - Creates the Bastion Servers and the Consul Servers. 
 
   BastionAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -421,40 +445,21 @@ Resources:
           PropagateAtLaunch: "true"
       
 
-#   AcmeOpsServerCPUScalingPolicy:
-#     Type: AWS::AutoScaling::ScalingPolicy
-#     Properties:
-#       AutoScalingGroupName: !Ref AcmeOpsAutoScalingGroup
-#       PolicyType: TargetTrackingScaling
-#       TargetTrackingConfiguration:
-#         PredefinedMetricSpecification:
-#           PredefinedMetricType: ASGAverageCPUUtilization
-#         TargetValue: !Ref CPUPolicyTargetValue
-
-
-# # Target Group 
-
-#   AcmeOpsWebServerTargetGroup:
-#     Type: AWS::ElasticLoadBalancingV2::TargetGroup
-#     Properties:
-#       HealthCheckIntervalSeconds: 90
-#       HealthCheckPath: /
-#       HealthCheckProtocol: HTTP
-#       HealthCheckTimeoutSeconds: 8
-#       HealthyThresholdCount: 2
-#       Port: 80
-#       Protocol: HTTP
-#       UnhealthyThresholdCount: 5
-#       VpcId: !Ref AcmeOpsvpc
-#       Tags:
-#         - Key: Name
-#           Value: !Sub ${EnvironmentName}-TargetGroup
-#         - Key: EnvironmentType
-#           Value: !Ref EnvironmentType
-#       TargetGroupAttributes:
-#       - Key: slow_start.duration_seconds
-#         Value: "90"
-
+  ConsulAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Join [ ",", [ !Ref AcmeOpsPrivateSubnet1, !Ref AcmeOpsPrivateSubnet2, !Ref AcmeOpsPrivateSubnet3 ]]
+      LaunchTemplate:
+        LaunchTemplateId: !Ref ConsulLaunchTemplate
+        Version: "1"
+      MinSize: '3'
+      MaxSize: '5'
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-Consul
+          PropagateAtLaunch: "true"
+      
 # Output Variables for created Infrastructure 
 
 Outputs:
