@@ -424,7 +424,7 @@ Resources:
         - DeviceName: "/dev/sdk"
           Ebs:
             VolumeSize: 10
-        KeyName: consul-cluster-ssh	
+        KeyName: consul-cluster-ssh
 
 
 #Autoscaling Group - Creates the Bastion Servers and the Consul Servers. 
