@@ -556,28 +556,28 @@ Resources:
 
 # Consul Load Balancer
 
-ConsulAppLB:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Name: !Sub ${EnvironmentName}-LoadBalancer
-      Subnets:
-        - !Ref AcmeOpsPublicSubnet1
-        - !Ref AcmeOpsPublicSubnet2
-        - !Ref AcmeOpsPublicSubnet3
-      SecurityGroups: 
-        - !GetAtt ConsulLBSecGroup.GroupId
-      Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName}-LoadBalancer
-        - Key: Project
-          Value: !Sub ${EnvironmentName}-Consul
+  ConsulAppLB:
+      Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+      Properties:
+        Name: !Sub ${EnvironmentName}-LoadBalancer
+        Subnets:
+          - !Ref AcmeOpsPublicSubnet1
+          - !Ref AcmeOpsPublicSubnet2
+          - !Ref AcmeOpsPublicSubnet3
+        SecurityGroups: 
+          - !GetAtt ConsulLBSecGroup.GroupId
+        Tags:
+          - Key: Name
+            Value: !Sub ${EnvironmentName}-LoadBalancer
+          - Key: Project
+            Value: !Sub ${EnvironmentName}-Consul
 
   ConsulALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       DefaultActions:
       - Type: forward
-        TargetGroupArn: !Ref UdagramWebServerTargetGroup
+        TargetGroupArn: !Ref ConsulServerTargetGroup
       LoadBalancerArn: !Ref ConsulAppLB
       Port: 80
       Protocol: HTTP
@@ -587,11 +587,11 @@ ConsulAppLB:
       Properties:
         Actions:
         - Type: forward
-          TargetGroupArn: !Ref 'UdagramWebServerTargetGroup'
+          TargetGroupArn: !Ref 'ConsulServerTargetGroup'
         Conditions:
         - Field: path-pattern
           Values: [/]
-        ListenerArn: !Ref 'UdagramALBListener'
+        ListenerArn: !Ref 'ConsulALBListener'
         Priority: 1
 
 # Target Group 
