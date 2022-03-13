@@ -402,19 +402,20 @@ Resources:
             VolumeSize: 10
         KeyName: acme_ops_ssh_key
   
-  ConsulLaunchTemplate:
+  ConsulServerLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateData:
         UserData:
           Fn::Base64: 
             !Sub |
-            runcmd:
-            - apt-get update -y
-            - sudo yum install -y yum-utils
-            - sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
-            - sudo yum -y install consul
-            - consul -v
+            #!/bin/bash
+            apt-get install unzip awscli -y
+            yum update -y
+            sudo yum install -y yum-utils
+            sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+            sudo yum -y install consul
+            consul -v
 
         ImageId: ami-0db188056a6ff81ae
         SecurityGroupIds:
@@ -441,9 +442,11 @@ Resources:
       MaxSize: '5'
       Tags:
         - Key: Name
-          Value: !Sub ${EnvironmentName}-Bastion
+          Value:!Sub ${EnvironmentName}-Bastion
           PropagateAtLaunch: "true"
-      
+        - Key: Project
+          Value: !Sub ${EnvironmentName}-Consul
+          PropagateAtLaunch: "true"
 
   ConsulAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -457,8 +460,13 @@ Resources:
       MaxSize: '5'
       Tags:
         - Key: Name
+          Value: ${EnvironmentName}-ConsulServer
+          PropagateAtLaunch: "true"
+        - Key: Project
           Value: !Sub ${EnvironmentName}-Consul
           PropagateAtLaunch: "true"
+
+
       
 # Output Variables for created Infrastructure 
 
