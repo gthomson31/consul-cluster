@@ -14,7 +14,7 @@
 # cluster state. Additionally, the directory must support the use of filesystem
 # locking, meaning some types of mounted folders (e.g. VirtualBox shared folders) may
 # not be suitable.
-data_dir = "/opt/consul"
+data_dir = /opt/consul
 
 # client_addr
 # The address to which Consul will bind client interfaces, including the HTTP and DNS
@@ -47,9 +47,6 @@ server = true
 #bind_addr = "[::]" # Listen on all IPv6
 bind_addr = "0.0.0.0"
 #
-# Advertise addr - if you want to point clients to a different address than bind or LB.
-#advertise_addr = "127.0.0.1"
-advertise_addr = "{{ GetInterfaceIP `ens5` }}"
 
 # Enterprise License
 # As of 1.10, Enterprise requires a license_path and does not have a short trial.

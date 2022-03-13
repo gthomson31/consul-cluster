@@ -64,6 +64,65 @@ Parameters:
 
 Resources:
 
+  ConsulRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+                - autoscaling.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+      - PolicyName:
+          Fn::Sub: ${AWS::StackName}-Autoscaling
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - autoscaling:*
+            Resource: "*"
+      - PolicyName:
+          Fn::Sub: ${AWS::StackName}-Ec2
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - ec2:*
+            Resource: "*"
+      - PolicyName:
+          Fn::Sub: ${AWS::StackName}-ElasticLoadBalancing
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - elasticloadbalancing:*
+            Resource: "*"
+      - PolicyName:
+          Fn::Sub: ${AWS::StackName}-Logs
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:*
+            Resource: "*"
+      - PolicyName:
+          Fn::Sub: ${AWS::StackName}-s3
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:*
+            Resource: "*"
+
+  HostProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+      - Ref: HostRole
+
 #NETWORKING RESOURCES 
   #VPC Initalistation
   AcmeOpsvpc:
@@ -377,7 +436,20 @@ Resources:
           ToPort: 65535
           CidrIp: !Ref VpcCIDR
    
-
+  ConsulLBSecGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Allows Access to UI Via LB.
+      VpcId: !Ref AcmeOpsvpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref AcmeOpsBastionSecGroup
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: !Ref VpcCIDR
 
 # Launch Template
 
@@ -389,6 +461,7 @@ Resources:
           Fn::Base64: 
             !Sub |
             #!/bin/bash
+            sudo yum update -y
             apt-get update -y
             apt-get install unzip awscli -y
 
@@ -410,12 +483,26 @@ Resources:
           Fn::Base64: 
             !Sub |
             #!/bin/bash
-            apt-get install unzip awscli -y
-            yum update -y
+            sudo yum update -y
             sudo yum install -y yum-utils
-            sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+            sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
             sudo yum -y install consul
             consul -v
+
+            #Copy Consul file into the instance
+            sudo aws s3 cp s3://acmeoperations-consul/ConsulConfig/consul-server-config.hcl /etc/consul.d/consul.hcl
+            sudo aws s3 cp s3://acmeoperations-consul/ConsulConfig/consul.service /etc/systemd/system/consul.service
+
+            # Grab instance IP
+            local_ip=`ip -o route get to 169.254.169.254 | sed -n 's/.*src \([0-9.]\+\).*/\1/p'`
+
+            # # Ammend the Consul config with the IP address 
+            # sudo chmod 777 /etc/consul.d/consul.hcl
+            # sudo echo advertise_addr = "$local_ip" >> /etc/consul.d/consul.hcl
+
+            # Start Consul
+            sudo systemctl start consul 
+        
         ImageId: ami-0db188056a6ff81ae
         SecurityGroupIds:
           -  !GetAtt ConsulSecGroup.GroupId
@@ -425,6 +512,8 @@ Resources:
           Ebs:
             VolumeSize: 10
         KeyName: consul-cluster-ssh
+        IamInstanceProfile:
+          Ref: HostProfile
 
 
 #Autoscaling Group - Creates the Bastion Servers and the Consul Servers. 
@@ -465,7 +554,69 @@ Resources:
           Value: !Sub ${EnvironmentName}-Consul
           PropagateAtLaunch: "true"
 
+# Consul Load Balancer
 
+ConsulAppLB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub ${EnvironmentName}-LoadBalancer
+      Subnets:
+        - !Ref AcmeOpsPublicSubnet1
+        - !Ref AcmeOpsPublicSubnet2
+        - !Ref AcmeOpsPublicSubnet3
+      SecurityGroups: 
+        - !GetAtt ConsulLBSecGroup.GroupId
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-LoadBalancer
+        - Key: Project
+          Value: !Sub ${EnvironmentName}-Consul
+
+  ConsulALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref UdagramWebServerTargetGroup
+      LoadBalancerArn: !Ref ConsulAppLB
+      Port: 80
+      Protocol: HTTP
+
+  ConsulALBListenerRule:
+      Type: AWS::ElasticLoadBalancingV2::ListenerRule
+      Properties:
+        Actions:
+        - Type: forward
+          TargetGroupArn: !Ref 'UdagramWebServerTargetGroup'
+        Conditions:
+        - Field: path-pattern
+          Values: [/]
+        ListenerArn: !Ref 'UdagramALBListener'
+        Priority: 1
+
+# Target Group 
+
+  ConsulServerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 90
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 8
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref AcmeOpsvpc
+
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-TargetGroup
+        - Key: EnvironmentType
+          Value: !Ref EnvironmentType
+      TargetGroupAttributes:
+      - Key: slow_start.duration_seconds
+        Value: "90"
       
 # Output Variables for created Infrastructure 
 
@@ -494,27 +645,8 @@ Outputs:
       Export:
         Name: !Sub ${EnvironmentName}-NatGateway3
 
-    # LoadBalancer:
-    #   Description: ARN on the application Load Balancer
-    #   Value: !Ref AcmeOpsAppLB
-    #   Export:
-    #     Name: !Sub ${EnvironmentName}-ALB
-
-    # LoadBalancerDNSName:
-    #   Description: DNS Namr on the application Load Balancer
-    #   Value: !Join ["",["http://", !GetAtt AcmeOpsAppLB.DNSName]]
-    #   Export:
-    #     Name: !Sub ${EnvironmentName}-ALB-DNS
-
-    # LBSecGroup :
-    #   Description: LB security Group ID
-    #   Value: !Ref AcmeOpsLBSecGroup
-    #   Export:
-    #     Name: !Sub ${EnvironmentName}-lb-sec-group-id      
-
-    # WebSecGroup :
-    #   Description: Web Servers security Group ID
-    #   Value: !Ref AcmeOpsWebServersSecGroup
-    #   Export:
-    #     Name: !Sub ${EnvironmentName}-web-sec-group-id
-        
+    LoadBalancerDNSName:
+      Description: DNS Name on the application Load Balancer
+      Value: !Join ["",["http://", !GetAtt ConsulAppLB.DNSName]]
+      Export:
+        Name: !Sub ${EnvironmentName}-ALB-DNS

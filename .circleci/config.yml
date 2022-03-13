@@ -9,7 +9,8 @@ workflows:
   acme_operations_consul:
     jobs:
       - copy_consul_config
-      - create_infrastructure
+      - create_infrastructure:
+        requires: [copy_consul_config]
 
 jobs:
   copy_consul_config:
@@ -20,6 +21,9 @@ jobs:
       - aws-s3/copy:
           from: configuration/consul-server-config.hcl
           to: 's3://acmeoperations-consul/ConsulConfig/consul-server-config.hcl'
+      - aws-s3/copy:
+          from: configuration/consul.service
+          to: 's3://acmeoperations-consul/ConsulConfig/consul.service'
   create_infrastructure:
     docker:
       - image: amazon/aws-cli
@@ -30,4 +34,4 @@ jobs:
           command: |
             aws cloudformation deploy \
               --template-file consul_infrastructure_build.yml \
-              --stack-name snowplow-consul-cluster
+              --stack-name AcmeOps-consul
