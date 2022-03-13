@@ -10,7 +10,8 @@ workflows:
     jobs:
       - copy_consul_config
       - create_infrastructure:
-        requires: [copy_consul_config]
+          requires: 
+          - copy_consul_config
 
 jobs:
   copy_consul_config:
