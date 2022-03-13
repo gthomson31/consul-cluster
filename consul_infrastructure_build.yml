@@ -62,6 +62,11 @@ Parameters:
         Type: String
         Default: "10.0.6.0/24"
 
+    CPUPolicyTargetValue:
+        Description: CPU Usage before autoscaling kicks in on the servers
+        Type: String
+        Default: "50"
+
 Resources:
 
   ConsulRole:
@@ -506,7 +511,9 @@ Resources:
             sudo echo advertise_addr = "$local_ip" >> /etc/consul.d/consul.hcl
 
             # Start Consul
-            # sudo systemctl start consul 
+            sudo consul validate /etc/consul.d/
+            sudo systemctl enable consul
+            sudo systemctl start consul 
         
         ImageId: ami-0db188056a6ff81ae
         SecurityGroupIds:
@@ -547,7 +554,7 @@ Resources:
         - !Join [ ",", [ !Ref AcmeOpsPrivateSubnet1, !Ref AcmeOpsPrivateSubnet2, !Ref AcmeOpsPrivateSubnet3 ]]
       LaunchTemplate:
         LaunchTemplateId: !Ref ConsulServerLaunchTemplate
-        Version: "1"
+        Version: !GetAtt ConsulServerLaunchTemplate.LatestVersionNumber
       MinSize: '3'
       MaxSize: '5'
       Tags:
@@ -557,7 +564,18 @@ Resources:
         - Key: Project
           Value: !Sub ${EnvironmentName}-Consul
           PropagateAtLaunch: true
+      TargetGroupARNs:
+      - Ref: ConsulServerTargetGroup
 
+  UdagramServerCPUScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref ConsulAutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: !Ref CPUPolicyTargetValue
 # Consul Load Balancer
 
   ConsulAppLB:
@@ -603,10 +621,10 @@ Resources:
   ConsulServerTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      HealthCheckIntervalSeconds: 90
+      HealthCheckIntervalSeconds: 20
       HealthCheckPath: /
       HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 8
+      HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       Port: 80
       Protocol: HTTP
@@ -622,6 +640,8 @@ Resources:
       - Key: slow_start.duration_seconds
         Value: "90"
       
+
+
 # Output Variables for created Infrastructure 
 
 Outputs:
