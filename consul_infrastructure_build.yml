@@ -644,8 +644,8 @@ Outputs:
       Export:
         Name: !Sub ${EnvironmentName}-NatGateway3
 
-    LoadBalancerDNSName:
-      Description: DNS Name on the application Load Balancer
-      Value: !Join ["",["http://", !GetAtt ConsulAppLB.DNSName]]
-      Export:
-        Name: !Sub ${EnvironmentName}-ALB-DNS
+    # LoadBalancerDNSName:
+    #   Description: DNS Name on the application Load Balancer
+    #   Value: !Join ["",["http://", !GetAtt ConsulAppLB.DNSName]]
+    #   Export:
+    #     Name: !Sub ${EnvironmentName}-ALB-DNS
