@@ -19,7 +19,7 @@ jobs:
       - checkout
       - aws-s3/copy:
           from: configuration/consul-server-config.hcl
-          to: 's3://acmeoperations2022/ConsulConfig'
+          to: 's3://acmeoperations-consul/ConsulConfig'
   create_infrastructure:
     docker:
       - image: amazon/aws-cli

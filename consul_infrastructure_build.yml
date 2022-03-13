@@ -442,7 +442,7 @@ Resources:
       MaxSize: '5'
       Tags:
         - Key: Name
-          Value:!Sub ${EnvironmentName}-Bastion
+          Value: !Sub ${EnvironmentName}-Bastion
           PropagateAtLaunch: "true"
         - Key: Project
           Value: !Sub ${EnvironmentName}-Consul
@@ -460,7 +460,7 @@ Resources:
       MaxSize: '5'
       Tags:
         - Key: Name
-          Value: ${EnvironmentName}-ConsulServer
+          Value: !Sub ${EnvironmentName}-ConsulServer
           PropagateAtLaunch: "true"
         - Key: Project
           Value: !Sub ${EnvironmentName}-Consul
