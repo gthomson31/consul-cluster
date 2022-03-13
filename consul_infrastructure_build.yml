@@ -580,6 +580,7 @@ Resources:
 
   ConsulAppLB:
       Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+      DependsOn: ConsulServerTargetGroup   
       Properties:
         Name: !Sub ${EnvironmentName}-LoadBalancer
         Subnets:
