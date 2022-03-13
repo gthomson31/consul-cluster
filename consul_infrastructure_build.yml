@@ -555,69 +555,69 @@ Resources:
           Value: !Sub ${EnvironmentName}-Consul
           PropagateAtLaunch: true
 
-# # Consul Load Balancer
+# Consul Load Balancer
 
-#   ConsulAppLB:
-#       Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-#       Properties:
-#         Name: !Sub ${EnvironmentName}-LoadBalancer
-#         Subnets:
-#           - !Ref AcmeOpsPublicSubnet1
-#           - !Ref AcmeOpsPublicSubnet2
-#           - !Ref AcmeOpsPublicSubnet3
-#         SecurityGroups: 
-#           - !GetAtt ConsulLBSecGroup.GroupId
-#         Tags:
-#           - Key: Name
-#             Value: !Sub ${EnvironmentName}-LoadBalancer
-#           - Key: Project
-#             Value: !Sub ${EnvironmentName}-Consul
+  ConsulAppLB:
+      Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+      Properties:
+        Name: !Sub ${EnvironmentName}-LoadBalancer
+        Subnets:
+          - !Ref AcmeOpsPublicSubnet1
+          - !Ref AcmeOpsPublicSubnet2
+          - !Ref AcmeOpsPublicSubnet3
+        SecurityGroups: 
+          - !GetAtt ConsulLBSecGroup.GroupId
+        Tags:
+          - Key: Name
+            Value: !Sub ${EnvironmentName}-LoadBalancer
+          - Key: Project
+            Value: !Sub ${EnvironmentName}-Consul
 
-#   ConsulALBListener:
-#     Type: AWS::ElasticLoadBalancingV2::Listener
-#     Properties:
-#       DefaultActions:
-#       - Type: forward
-#         TargetGroupArn: !Ref ConsulServerTargetGroup
-#       LoadBalancerArn: !Ref ConsulAppLB
-#       Port: 80
-#       Protocol: HTTP
+  ConsulALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref ConsulServerTargetGroup
+      LoadBalancerArn: !Ref ConsulAppLB
+      Port: 80
+      Protocol: HTTP
 
-#   ConsulALBListenerRule:
-#       Type: AWS::ElasticLoadBalancingV2::ListenerRule
-#       Properties:
-#         Actions:
-#         - Type: forward
-#           TargetGroupArn: !Ref 'ConsulServerTargetGroup'
-#         Conditions:
-#         - Field: path-pattern
-#           Values: [/]
-#         ListenerArn: !Ref 'ConsulALBListener'
-#         Priority: 1
+  ConsulALBListenerRule:
+      Type: AWS::ElasticLoadBalancingV2::ListenerRule
+      Properties:
+        Actions:
+        - Type: forward
+          TargetGroupArn: !Ref 'ConsulServerTargetGroup'
+        Conditions:
+        - Field: path-pattern
+          Values: [/]
+        ListenerArn: !Ref 'ConsulALBListener'
+        Priority: 1
 
-# # Target Group 
+# Target Group 
 
-#   ConsulServerTargetGroup:
-#     Type: AWS::ElasticLoadBalancingV2::TargetGroup
-#     Properties:
-#       HealthCheckIntervalSeconds: 90
-#       HealthCheckPath: /
-#       HealthCheckProtocol: HTTP
-#       HealthCheckTimeoutSeconds: 8
-#       HealthyThresholdCount: 2
-#       Port: 80
-#       Protocol: HTTP
-#       UnhealthyThresholdCount: 2
-#       VpcId: !Ref AcmeOpsvpc
+  ConsulServerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 90
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 8
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref AcmeOpsvpc
 
-#       Tags:
-#         - Key: Name
-#           Value: !Sub ${EnvironmentName}-TargetGroup
-#         - Key: EnvironmentType
-#           Value: !Ref EnvironmentType
-#       TargetGroupAttributes:
-#       - Key: slow_start.duration_seconds
-#         Value: "90"
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-TargetGroup
+        - Key: Project
+          Value: !Sub ${EnvironmentName}-Consul
+      TargetGroupAttributes:
+      - Key: slow_start.duration_seconds
+        Value: "90"
       
 # Output Variables for created Infrastructure 
 
