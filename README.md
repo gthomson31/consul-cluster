@@ -1,5 +1,7 @@
 ### Consul Development - Test Deployment
 
+[![CircleCI](https://circleci.com/gh/gthomson31/consul-cluster/tree/main.svg?style=svg)](https://circleci.com/gh/gthomson31/consul-cluster/tree/main)
+
 Project Requirements : 
 
 - 3 x Server Cluster minimum at all times 
