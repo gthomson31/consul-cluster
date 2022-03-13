@@ -545,33 +545,6 @@ Resources:
           Value: !Sub ${EnvironmentName}-Consul
           PropagateAtLaunch: true
 
-  BastionCPUAlarmHigh:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      EvaluationPeriods: '1'
-      Statistic: Average
-      Threshold: !Ref HighCPUTargetValue
-      AlarmDescription: Alarm if CPU too high or metric disappears indicating instance
-        is down
-      Period: '60'
-      AlarmActions:
-      - !Ref ConsulCPUScalingPolicy
-      Namespace: AWS/EC2
-      Dimensions:
-      - Name: AutoScalingGroupName
-        Value:
-          Ref: BastionAutoScalingGroup
-      ComparisonOperator: GreaterThanThreshold
-      MetricName: CPUUtilization
-
-  BastionLowCPUScalingPolicy:
-      Type: AWS::AutoScaling::ScalingPolicy
-      Properties:
-        AdjustmentType: ChangeInCapacity
-        AutoScalingGroupName: !Ref BastionAutoScalingGroup
-        ScalingAdjustment: '-1'
-
-
 
   ConsulAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -593,6 +566,63 @@ Resources:
       TargetGroupARNs:
       - Ref: ConsulServerTargetGroup
 
+
+# Creating the Scaling Policys to track High/Low CPU usage - Bastion 
+
+  BastionHighCPUScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref ConsulAutoScalingGroup
+      ScalingAdjustment: '1'
+
+  BastionCPUAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      EvaluationPeriods: '1'
+      Statistic: Average
+      Threshold: !Ref HighCPUTargetValue
+      AlarmDescription: Alarm if CPU too high or metric disappears indicating instance
+        is down
+      Period: '60'
+      AlarmActions:
+      - !Ref ConsulHighCPUScalingPolicy
+      Namespace: AWS/EC2
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value:
+          Ref: BastionAutoScalingGroup
+      ComparisonOperator: GreaterThanThreshold
+      MetricName: CPUUtilization
+
+  BastionLowCPUScalingPolicy:
+      Type: AWS::AutoScaling::ScalingPolicy
+      Properties:
+        AdjustmentType: ChangeInCapacity
+        AutoScalingGroupName: !Ref BastionAutoScalingGroup
+        ScalingAdjustment: '-1'
+
+  BastionCPUAlarmLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      EvaluationPeriods: '1'
+      Statistic: Average
+      Threshold: !Ref LowCPUTargetValue
+      AlarmDescription: Alarm if CPU too low scale back instances
+      Period: '60'
+      AlarmActions:
+      - !Ref BastionLowCPUScalingPolicy
+      Namespace: AWS/EC2
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value:
+          Ref: BastionAutoScalingGroup
+      ComparisonOperator: LessThanThreshold
+      MetricName: CPUUtilization
+
+
+# Creating the Scaling Policys to track High/Low CPU usage - Consul
+ 
   ConsulHighCPUScalingPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
     Properties:
@@ -610,7 +640,7 @@ Resources:
         is down
       Period: '60'
       AlarmActions:
-      - !Ref ConsulCPUScalingPolicy
+      - !Ref ConsulHighCPUScalingPolicy
       Namespace: AWS/EC2
       Dimensions:
       - Name: AutoScalingGroupName
@@ -626,7 +656,7 @@ Resources:
         AutoScalingGroupName: !Ref ConsulAutoScalingGroup
         ScalingAdjustment: '-1'
 
-  CPUAlarmLow:
+  ConsulCPUAlarmLow:
     Type: AWS::CloudWatch::Alarm
     Properties:
       EvaluationPeriods: '1'
@@ -635,13 +665,13 @@ Resources:
       AlarmDescription: Alarm if CPU too low scale back instances
       Period: '60'
       AlarmActions:
-      - !Ref ConsulCPUScalingPolicy
+      - !Ref ConsulLowCPUScalingPolicy
       Namespace: AWS/EC2
       Dimensions:
       - Name: AutoScalingGroupName
         Value:
           Ref: ConsulAutoScalingGroup
-      ComparisonOperator: GreaterThanThreshold
+      ComparisonOperator: LessThanThreshold
       MetricName: CPUUtilization
 
 # Consul Load Balancer
