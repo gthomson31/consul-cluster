@@ -1,14 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-    Greg Thomson - AcmeOps - Consul Cluster
-    This Cloudformation template routes in traffic via a public facing load balancer to a target group of web servers split accross two avalibility zones 
-    that are serving static website traffic imported from S3 as part of the launch Configuration.
-
-    Network configuration is split into 1 private subnet and 1 public subnet per AZ. 
-    Using the Network EU-WEST-1 which containts 3 AZ's
-
-    External Internet access is provided via route to a seperate NAT for each private subnet and directly to the IGW for resources within the public subnet.
-
+    Greg Thomson - AcmeOps - Consul Cluster Deployment
+    
 Parameters:
     EnvironmentName:
         Description: An Environment name that will be prefixed to resources
