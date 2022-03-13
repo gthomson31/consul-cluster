@@ -416,7 +416,6 @@ Resources:
             sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
             sudo yum -y install consul
             consul -v
-
         ImageId: ami-0db188056a6ff81ae
         SecurityGroupIds:
           -  !GetAtt ConsulSecGroup.GroupId
@@ -454,7 +453,7 @@ Resources:
       VPCZoneIdentifier:
         - !Join [ ",", [ !Ref AcmeOpsPrivateSubnet1, !Ref AcmeOpsPrivateSubnet2, !Ref AcmeOpsPrivateSubnet3 ]]
       LaunchTemplate:
-        LaunchTemplateId: !Ref ConsulLaunchTemplate
+        LaunchTemplateId: !Ref ConsulServerLaunchTemplate
         Version: "1"
       MinSize: '3'
       MaxSize: '5'
