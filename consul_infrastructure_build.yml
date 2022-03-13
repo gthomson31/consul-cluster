@@ -513,7 +513,7 @@ Resources:
             VolumeSize: 10
         KeyName: consul-cluster-ssh
         IamInstanceProfile:
-          Ref: HostProfile
+          Ref: ConsulProfile
 
 
 #Autoscaling Group - Creates the Bastion Servers and the Consul Servers. 
