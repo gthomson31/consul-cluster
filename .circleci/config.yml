@@ -35,4 +35,5 @@ jobs:
           command: |
             aws cloudformation deploy \
               --template-file consul_infrastructure_build.yml \
-              --stack-name AcmeOps-consul
+              --stack-name AcmeOps-consul\
+              --capabilities CAPABILITY_NAMED_IAM
