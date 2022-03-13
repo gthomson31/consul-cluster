@@ -545,15 +545,33 @@ Resources:
           Value: !Sub ${EnvironmentName}-Consul
           PropagateAtLaunch: true
 
-  BastionCPUScalingPolicy:
-    Type: AWS::AutoScaling::ScalingPolicy
+  BastionCPUAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
     Properties:
-      AutoScalingGroupName: !Ref BastionAutoScalingGroup
-      PolicyType: TargetTrackingScaling
-      TargetTrackingConfiguration:
-        PredefinedMetricSpecification:
-          PredefinedMetricType: ASGAverageCPUUtilization
-        TargetValue: !Ref CPUPolicyTargetValue
+      EvaluationPeriods: '1'
+      Statistic: Average
+      Threshold: !Ref HighCPUTargetValue
+      AlarmDescription: Alarm if CPU too high or metric disappears indicating instance
+        is down
+      Period: '60'
+      AlarmActions:
+      - !Ref ConsulCPUScalingPolicy
+      Namespace: AWS/EC2
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value:
+          Ref: BastionAutoScalingGroup
+      ComparisonOperator: GreaterThanThreshold
+      MetricName: CPUUtilization
+
+  BastionLowCPUScalingPolicy:
+      Type: AWS::AutoScaling::ScalingPolicy
+      Properties:
+        AdjustmentType: ChangeInCapacity
+        AutoScalingGroupName: !Ref BastionAutoScalingGroup
+        ScalingAdjustment: '-1'
+
+
 
   ConsulAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -582,7 +600,7 @@ Resources:
       AutoScalingGroupName: !Ref ConsulAutoScalingGroup
       ScalingAdjustment: '1'
 
-  CPUAlarmHigh:
+  ConsulCPUAlarmHigh:
     Type: AWS::CloudWatch::Alarm
     Properties:
       EvaluationPeriods: '1'
