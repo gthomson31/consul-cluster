@@ -25,7 +25,7 @@ jobs:
       - aws-s3/copy:
           from: configuration/consul.service
           to: 's3://acmeoperations-consul/ConsulConfig/consul.service'
-       - aws-s3/copy:
+      - aws-s3/copy:
           from: fizzbuzz/*
           to: 's3://acmeoperations-consul/fizz-buzz/*' 
   create_infrastructure:
