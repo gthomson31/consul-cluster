@@ -62,10 +62,15 @@ Parameters:
         Type: String
         Default: "10.0.6.0/24"
 
-    CPUPolicyTargetValue:
-        Description: CPU Usage before autoscaling kicks in on the servers
+    HighCPUTargetValue:
+        Description: CPU Usage threshold before scaling
         Type: String
-        Default: "50"
+        Default: "60"
+
+    LowCPUTargetValue:
+        Description: CPU Usage threshold before scaling
+        Type: String
+        Default: "20"
 
 Resources:
 
@@ -448,13 +453,13 @@ Resources:
       VpcId: !Ref AcmeOpsvpc
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          SourceSecurityGroupId: !Ref AcmeOpsBastionSecGroup
-        - IpProtocol: tcp
           FromPort: 0
           ToPort: 65535
-          CidrIp: !Ref VpcCIDR
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
 
 # Launch Template
 
@@ -515,7 +520,7 @@ Resources:
         BlockDeviceMappings:
         - DeviceName: "/dev/sdk"
           Ebs:
-            VolumeSize: 10
+            VolumeSize: 25
         KeyName: consul-cluster-ssh
 
 
@@ -540,6 +545,16 @@ Resources:
           Value: !Sub ${EnvironmentName}-Consul
           PropagateAtLaunch: true
 
+  BastionCPUScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref BastionAutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: !Ref CPUPolicyTargetValue
+
   ConsulAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
@@ -549,7 +564,7 @@ Resources:
         LaunchTemplateId: !Ref ConsulServerLaunchTemplate
         Version: !GetAtt ConsulServerLaunchTemplate.LatestVersionNumber
       MinSize: '3'
-      MaxSize: '5'
+      MaxSize: '4'
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName}-ConsulServer
@@ -560,15 +575,57 @@ Resources:
       TargetGroupARNs:
       - Ref: ConsulServerTargetGroup
 
-  UdagramServerCPUScalingPolicy:
+  ConsulHighCPUScalingPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
     Properties:
+      AdjustmentType: ChangeInCapacity
       AutoScalingGroupName: !Ref ConsulAutoScalingGroup
-      PolicyType: TargetTrackingScaling
-      TargetTrackingConfiguration:
-        PredefinedMetricSpecification:
-          PredefinedMetricType: ASGAverageCPUUtilization
-        TargetValue: !Ref CPUPolicyTargetValue
+      ScalingAdjustment: '1'
+
+  CPUAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      EvaluationPeriods: '1'
+      Statistic: Average
+      Threshold: !Ref HighCPUTargetValue
+      AlarmDescription: Alarm if CPU too high or metric disappears indicating instance
+        is down
+      Period: '60'
+      AlarmActions:
+      - !Ref ConsulCPUScalingPolicy
+      Namespace: AWS/EC2
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value:
+          Ref: ConsulAutoScalingGroup
+      ComparisonOperator: GreaterThanThreshold
+      MetricName: CPUUtilization
+
+ ConsulLowCPUScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref ConsulAutoScalingGroup
+      ScalingAdjustment: '-1'
+
+  CPUAlarmLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      EvaluationPeriods: '1'
+      Statistic: Average
+      Threshold: !Ref LowCPUTargetValue
+      AlarmDescription: Alarm if CPU too low scale back instances
+      Period: '60'
+      AlarmActions:
+      - !Ref ConsulCPUScalingPolicy
+      Namespace: AWS/EC2
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value:
+          Ref: ConsulAutoScalingGroup
+      ComparisonOperator: GreaterThanThreshold
+      MetricName: CPUUtilization
+
 # Consul Load Balancer
 
   ConsulAppLB:
@@ -616,11 +673,11 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckIntervalSeconds: 20
-      HealthCheckPath: /
+      HealthCheckPath: /ui/
       HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
-      Port: 80
+      Port: 8500
       Protocol: HTTP
       UnhealthyThresholdCount: 2
       VpcId: !Ref AcmeOpsvpc
@@ -634,7 +691,6 @@ Resources:
       - Key: slow_start.duration_seconds
         Value: "90"
       
-
 
 # Output Variables for created Infrastructure 
 
@@ -664,7 +720,7 @@ Outputs:
         Name: !Sub ${EnvironmentName}-NatGateway3
 
     LoadBalancerDNSName:
-      Description: DNS Name on the application Load Balancer
-      Value: !Join ["",["http://", !GetAtt ConsulAppLB.DNSName]]
+      Description: DNS Name to Access the Consul UI
+      Value: !Join ["",["http://", !GetAtt ConsulAppLB.DNSName , "/ui/"]]
       Export:
         Name: !Sub ${EnvironmentName}-ALB-DNS
