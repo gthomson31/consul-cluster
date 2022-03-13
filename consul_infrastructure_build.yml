@@ -601,12 +601,12 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       MetricName: CPUUtilization
 
- ConsulLowCPUScalingPolicy:
-    Type: AWS::AutoScaling::ScalingPolicy
-    Properties:
-      AdjustmentType: ChangeInCapacity
-      AutoScalingGroupName: !Ref ConsulAutoScalingGroup
-      ScalingAdjustment: '-1'
+  ConsulLowCPUScalingPolicy:
+      Type: AWS::AutoScaling::ScalingPolicy
+      Properties:
+        AdjustmentType: ChangeInCapacity
+        AutoScalingGroupName: !Ref ConsulAutoScalingGroup
+        ScalingAdjustment: '-1'
 
   CPUAlarmLow:
     Type: AWS::CloudWatch::Alarm
