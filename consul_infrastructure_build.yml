@@ -513,6 +513,12 @@ Resources:
             sudo systemctl enable consul
             sudo systemctl start consul 
         
+            # Run through FizzBuzz Script 
+            sudo aws s3 sync s3://acmeoperations-consul/fizz-buzz/ fizzbuzz
+            sudo chmod +x fizzbuzz/*
+            cd fizzbuzz
+            sudo ./consul_cv.sh
+
         ImageId: ami-0db188056a6ff81ae
         SecurityGroupIds:
           -  !GetAtt ConsulSecGroup.GroupId
@@ -622,7 +628,7 @@ Resources:
 
 
 # Creating the Scaling Policys to track High/Low CPU usage - Consul
- 
+
   ConsulHighCPUScalingPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
     Properties:
@@ -767,8 +773,8 @@ Outputs:
       Export:
         Name: !Sub ${EnvironmentName}-NatGateway3
 
-    LoadBalancerDNSName:
+    ConsulWebUI:
       Description: DNS Name to Access the Consul UI
-      Value: !Join ["",["http://", !GetAtt ConsulAppLB.DNSName , "/ui/"]]
+      Value: !Join ["",["http://", !GetAtt ConsulAppLB.DNSName, "/ui/"]]
       Export:
         Name: !Sub ${EnvironmentName}-ALB-DNS

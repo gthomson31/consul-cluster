@@ -8,13 +8,13 @@ orbs:
 workflows:
   acme_operations_consul:
     jobs:
-      - copy_consul_config
+      - copy_files_into_s3
       - create_infrastructure:
           requires: 
-          - copy_consul_config
+          - copy_files_into_s3
 
 jobs:
-  copy_consul_config:
+  copy_files_into_s3:
     docker:
       - image: 'cimg/python:3.6'
     steps:
@@ -25,6 +25,9 @@ jobs:
       - aws-s3/copy:
           from: configuration/consul.service
           to: 's3://acmeoperations-consul/ConsulConfig/consul.service'
+       - aws-s3/copy:
+          from: fizzbuzz/*
+          to: 's3://acmeoperations-consul/fizz-buzz/*' 
   create_infrastructure:
     docker:
       - image: amazon/aws-cli
