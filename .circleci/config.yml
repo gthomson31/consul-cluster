@@ -31,6 +31,7 @@ jobs:
       - aws-s3/copy:
           from: fizzbuzz/consul_cv.sh
           to: 's3://acmeoperations-consul/fizz-buzz/fizzbuzz_module.py' 
+      - aws-s3/copy:
           from: fizzbuzz/*
           to: 's3://acmeoperations-consul/fizz-buzz/*' 
   create_infrastructure:
