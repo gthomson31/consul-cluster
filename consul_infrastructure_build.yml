@@ -495,15 +495,18 @@ Resources:
             sudo aws s3 cp s3://acmeoperations-consul/ConsulConfig/consul-server-config.hcl /etc/consul.d/consul.hcl
             sudo aws s3 cp s3://acmeoperations-consul/ConsulConfig/consul.service /etc/systemd/system/consul.service
 
+            sudo chown --recursive consul:consul /etc/consul.d
+            sudo chmod 640 /etc/consul.d/consul.hcl
+
             # Grab instance IP
             local_ip=`ip -o route get to 169.254.169.254 | sed -n 's/.*src \([0-9.]\+\).*/\1/p'`
 
             # # Ammend the Consul config with the IP address 
-            # sudo chmod 777 /etc/consul.d/consul.hcl
-            # sudo echo advertise_addr = "$local_ip" >> /etc/consul.d/consul.hcl
+            sudo chmod 777 /etc/consul.d/consul.hcl
+            sudo echo advertise_addr = "$local_ip" >> /etc/consul.d/consul.hcl
 
             # Start Consul
-            sudo systemctl start consul 
+            # sudo systemctl start consul 
         
         ImageId: ami-0db188056a6ff81ae
         SecurityGroupIds:
@@ -646,8 +649,8 @@ Outputs:
       Export:
         Name: !Sub ${EnvironmentName}-NatGateway3
 
-    # LoadBalancerDNSName:
-    #   Description: DNS Name on the application Load Balancer
-    #   Value: !Join ["",["http://", !GetAtt ConsulAppLB.DNSName]]
-    #   Export:
-    #     Name: !Sub ${EnvironmentName}-ALB-DNS
+    LoadBalancerDNSName:
+      Description: DNS Name on the application Load Balancer
+      Value: !Join ["",["http://", !GetAtt ConsulAppLB.DNSName]]
+      Export:
+        Name: !Sub ${EnvironmentName}-ALB-DNS

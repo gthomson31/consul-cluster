@@ -5,7 +5,7 @@
 # it defaults to "dc1". Consul has first-class support for multiple datacenters, but 
 # it relies on proper configuration. Nodes in the same datacenter should be on a 
 # single LAN.
-#datacenter = "my-dc-1"
+datacenter = "acme-dc1"
 
 # data_dir
 # This flag provides a data directory for the agent to store state. This is required
@@ -14,7 +14,7 @@
 # cluster state. Additionally, the directory must support the use of filesystem
 # locking, meaning some types of mounted folders (e.g. VirtualBox shared folders) may
 # not be suitable.
-data_dir = /opt/consul
+data_dir = "/opt/consul"
 
 # client_addr
 # The address to which Consul will bind client interfaces, including the HTTP and DNS
@@ -46,7 +46,7 @@ server = true
 # You may use IPv4 or IPv6 but if you have multiple interfaces you must be explicit.
 #bind_addr = "[::]" # Listen on all IPv6
 bind_addr = "0.0.0.0"
-#
+
 
 # Enterprise License
 # As of 1.10, Enterprise requires a license_path and does not have a short trial.
