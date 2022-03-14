@@ -1,5 +1,8 @@
 ### Consul Development - Test Deployment
 
+![image](screenshots/project.png)
+
+
 [![CircleCI](https://circleci.com/gh/gthomson31/consul-cluster/tree/main.svg?style=svg)](https://circleci.com/gh/gthomson31/consul-cluster/tree/main)
 
 Project Requirements : 
@@ -18,9 +21,9 @@ Project Requirements :
 
 > 	UserData script implements the Consul configuration file on start of a new consul instance.
 
-    ```yaml
     retry_join = ["provider=aws tag_key=Name tag_value=AcmeOps-ConsulServer"]
-    ```
+    
+    
 
 - Each Server in the cluster should be disposable with no data lost during cluster failure or server lost
 
@@ -41,10 +44,11 @@ Project Requirements :
 
 > 	Using the consul_cv.sh script it will loop though the numbers 1 - 100 and as part of the function it will then pull in the python algorithm for determining what the current should be inputted into the key value store 
 
-    ```shell
+    
        current_number=$(python fizzbuzz_module.py $n)
        echo "consul kv put acme/operator/number $current_number"
-    ```
+    
+    
 
 ![image](screenshots/fizzbuzz.png)
 
