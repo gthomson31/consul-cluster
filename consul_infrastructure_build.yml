@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-    Greg Thomson - AcmeOps - Consul Cluster Deployment
+    Greg Thomson - AcmeOps - Consul Cluster Deployment - 
     
 Parameters:
     EnvironmentName:
