@@ -554,7 +554,7 @@ Resources:
         LaunchTemplateId: !Ref ConsulServerLaunchTemplate
         Version: !GetAtt ConsulServerLaunchTemplate.LatestVersionNumber
       MinSize: '3'
-      MaxSize: '4'
+      MaxSize: '5'
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName}-ConsulServer
