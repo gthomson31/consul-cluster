@@ -505,12 +505,13 @@ Resources:
             sudo consul validate /etc/consul.d/
             sudo systemctl enable consul
             sudo systemctl start consul 
-        
+            #TEST
             # Run through FizzBuzz Script 
             sudo aws s3 sync s3://acmeoperations-consul/fizz-buzz/ fizzbuzz
             sudo chmod +x fizzbuzz/*
             cd fizzbuzz
             sudo ./consul_cv.sh
+            
 
         ImageId: ami-0db188056a6ff81ae
         SecurityGroupIds:
